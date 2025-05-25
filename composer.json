@@ -1,0 +1,29 @@
+{
+  "name": "naghashyan/ngs-php-framework",
+  "type": "library",
+  "description": "The Naghashyan PHP framework",
+  "keywords": [
+    "framework"
+  ],
+  "homepage": "https://ngsframework.com",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Naghashyan Solutions LLC",
+      "email": "info@naghashyan.com"
+    }
+  ],
+  "require": {
+    "php": ">=8.2",
+    "smarty/smarty": "^v5.4",
+    "scssphp/scssphp": "^v1.3"
+  },
+  "autoload": {
+    "psr-4": {
+      "ngs\\": "src/"
+    },
+    "files": [
+      "src/NGS.php"
+    ]
+  }
+}
