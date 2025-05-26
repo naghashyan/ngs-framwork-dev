@@ -40,7 +40,7 @@ class NgsDynamic extends \stdClass
         // retrieving the method type (setter or getter)
         $type = substr($m, 0, 3);
         // retrieving the field name
-        $fieldName = NGS()->getNgsUtils()->lowerFirstLetter(substr($m, 3));
+        $fieldName = NGS()->createDefinedInstance('NGS_UTILS', \ngs\util\NgsUtils::class)->lowerFirstLetter(substr($m, 3));
 
         if ($type == 'set') {
             if (count($a) == 1) {
