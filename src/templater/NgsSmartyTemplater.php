@@ -42,9 +42,10 @@ class NgsSmartyTemplater extends Smarty
      */
     public function __construct(bool $isHtml = true)
     {
+        $moduleRoutesEngine = NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', \ngs\routes\NgsModuleRoutes::class);
         parent::__construct();
-        $this->assign('NGS_CMS_DIR', NGS()->getTemplateDir(NGS()->get('NGS_CMS_NS')));
-        $this->assign('ADMIN_DIR', NGS()->getTemplateDir('admin'));
+        $this->assign('NGS_CMS_DIR', realpath(NGS()->getModuleDirByNS(NGS()->get('NGS_CMS_NS')) . '/' . NGS()->get('TEMPLATES_DIR')));
+        $this->assign('ADMIN_DIR', realpath(NGS()->getModuleDirByNS('admin') . '/' . NGS()->get('TEMPLATES_DIR')));
         $this->isHtml = $isHtml;
         //register NGS plugins
         $this->registerPlugin('function', 'nest', [$this, 'nest']);
@@ -52,10 +53,10 @@ class NgsSmartyTemplater extends Smarty
         $this->registerPlugin('function', 'ngs', [$this, 'NGS']);
         $this->registerPlugin('modifier', 'json_encode', [$this, "jsonEncode"]);
         $this->registerPlugin('modifier', 'print_r', [$this, "printR"]);
-        $moduleList = NGS()->getModulesRoutesEngine()->getAllModules();
+        $moduleList = $moduleRoutesEngine->getAllModules();
         $tmpTplArr = [];
         foreach ($moduleList as $value) {
-            $tmpTplArr[$value] = NGS()->getTemplateDir($value);
+            $tmpTplArr[$value] = realpath(NGS()->getModuleDirByNS($value) . '/' . NGS()->get('TEMPLATES_DIR'));
         }
         $this->setTemplateDir($tmpTplArr);
         $this->setCompileDir($this->getSmartyCompileDir());
@@ -115,15 +116,19 @@ class NgsSmartyTemplater extends Smarty
      */
     public function nestLoad($params, $template)
     {
+        $loadMapper = NGS()->createDefinedInstance('LOAD_MAPPER', \ngs\routes\NgsLoadMapper::class);
+        $routesEngine = NGS()->createDefinedInstance('ROUTES_ENGINE', \ngs\routes\NgsRoutes::class);
+        $sessionManager = NGS()->createDefinedInstance('SESSION_MANAGER', \ngs\session\AbstractSessionManager::class);
+
         if (!isset($params['action'])) {
             trigger_error('nest: missing action parameter');
             return;
         }
-        $parent = NGS()->getLoadMapper()->getGlobalParentLoad();
+        $parent = $loadMapper->getGlobalParentLoad();
         if (isset($params['parent'])) {
             $parent = $params['parent'];
         }
-        $actionArr = NGS()->getRoutesEngine()->getLoadORActionByAction($params['action']);
+        $actionArr = $routesEngine->getLoadORActionByAction($params['action']);
         $action = $actionArr['action'];
         if ($actionArr['type'] !== 'load') {
             throw new DebugException($action . ' Load Not found');
@@ -138,12 +143,12 @@ class NgsSmartyTemplater extends Smarty
         $loadObj->setIsNestedLoad(true);
         $loadObj->setLoadName($action);
         $loadObj->initialize();
-        if (NGS()->getSessionManager()->validateRequest($loadObj) === false) {
+        if ($sessionManager->validateRequest($loadObj) === false) {
             $loadObj->onNoAccess();
         }
         $loadObj->service();
 
-        NGS()->getLoadMapper()->setNestedLoads($parent, $params['action'], $loadObj->getJsonParams());
+        $loadMapper->setNestedLoads($parent, $params['action'], $loadObj->getJsonParams());
         $template->tpl_vars['ns']->value['inc'][$action]['filename'] = $loadObj->getTemplate();
         $template->tpl_vars['ns']->value['inc'][$action]['params'] = $loadObj->getParams();
         $template->tpl_vars['ns']->value['inc'][$action]['namespace'] = $params['action'];
@@ -199,19 +204,22 @@ class NgsSmartyTemplater extends Smarty
         //$_tpl->renderTemplate();
         $_output = $_tpl->display();
 
-        if (NGS()->isJsFrameworkEnable() && !NGS()->getHttpUtils()->isAjaxRequest()) {
-            $jsonParams = $nsValue['inc'][$params['ns']]['jsonParam'];
-            $parentLoad = $nsValue['inc'][$params['ns']]['parent'];
-            $jsString = '<script type="text/javascript">';
-            $jsString .= '_setNgsDefaults(function(){';
-            if ($parentLoad) {
-                $jsString .= 'NGS.setNestedLoad("' . $parentLoad . '", "' . $namespace . '", ' . json_encode($jsonParams, JSON_THROW_ON_ERROR, 512) . ')';
-            } elseif (isset($nsValue["inc"][$params["ns"]]["action"])) {
-                $jsString .= 'NGS.nestLoad("' . $nsValue["inc"][$params["ns"]]["action"] . '", ' . json_encode($jsonParams, JSON_THROW_ON_ERROR, 512) . ', "")';
+        if (NGS()->get('JS_FRAMEWORK_ENABLE')) {
+            $httpUtils = NGS()->createDefinedInstance('HTTP_UTILS', \ngs\util\HttpUtils::class);
+            if (!$httpUtils->isAjaxRequest()) {
+                $jsonParams = $nsValue['inc'][$params['ns']]['jsonParam'];
+                $parentLoad = $nsValue['inc'][$params['ns']]['parent'];
+                $jsString = '<script type="text/javascript">';
+                $jsString .= '_setNgsDefaults(function(){';
+                if ($parentLoad) {
+                    $jsString .= 'NGS.setNestedLoad("' . $parentLoad . '", "' . $namespace . '", ' . json_encode($jsonParams, JSON_THROW_ON_ERROR, 512) . ')';
+                } elseif (isset($nsValue["inc"][$params["ns"]]["action"])) {
+                    $jsString .= 'NGS.nestLoad("' . $nsValue["inc"][$params["ns"]]["action"] . '", ' . json_encode($jsonParams, JSON_THROW_ON_ERROR, 512) . ', "")';
+                }
+                $jsString .= '});';
+                $jsString .= '</script>';
+                $_output = $jsString . $_output;
             }
-            $jsString .= '});';
-            $jsString .= '</script>';
-            $_output = $jsString . $_output;
         }
         return $_output;
     }
@@ -239,6 +247,7 @@ class NgsSmartyTemplater extends Smarty
      */
     public function NGS($params, $template)
     {
+        $httpUtils = NGS()->createDefinedInstance('HTTP_UTILS', \ngs\util\HttpUtils::class);
         if (!isset($params['cmd'])) {
             trigger_error("NGS: missing 'cmd' parameter");
             return;
@@ -253,72 +262,84 @@ class NgsSmartyTemplater extends Smarty
                 if (isset($params['protocol']) && $params['protocol'] == true) {
                     $protocol = true;
                 }
-                return NGS()->getPublicJsOutputHost($ns, $protocol);
+                $jsBuildMode = NGS()->get('JS_BUILD_MODE');
+                $publicJsOutputDir = '';
+                if ($jsBuildMode === 'development') {
+                    $publicJsOutputDir = NGS()->get('WEB_DIR') . '/' . NGS()->get('JS_DIR');
+                } else {
+                    $publicJsOutputDir = NGS()->get('PUBLIC_OUTPUT_DIR') . '/' . NGS()->get('JS_DIR');
+                }
+                return $httpUtils->getNgsStaticPath($ns, $protocol) . '/' . $publicJsOutputDir;
                 break;
             case 'get_js_out_dir' :
                 $protocol = false;
                 if (isset($params['protocol']) && $params['protocol'] == true) {
                     $protocol = true;
                 }
-                return NGS()->getPublicOutputHost($ns, $protocol) . '/js';
+                return $httpUtils->getNgsStaticPath($ns, $protocol) . '/' . NGS()->get('PUBLIC_OUTPUT_DIR') . '/js';
                 break;
             case 'get_libs_out_dir' :
                 $protocol = false;
                 if (isset($params['protocol']) && $params['protocol'] == true) {
                     $protocol = true;
                 }
-                return NGS()->getPublicHost($ns, $protocol) . '/libs';
+                return $httpUtils->getNgsStaticPath($ns, $protocol) . '/libs';
                 break;
             case 'get_css_out_dir' :
                 $protocol = false;
                 if (isset($params['protocol']) && $params['protocol'] == true) {
                     $protocol = true;
                 }
-                return NGS()->getPublicOutputHost($ns, $protocol) . '/css';
+                return $httpUtils->getNgsStaticPath($ns, $protocol) . '/' . NGS()->get('PUBLIC_OUTPUT_DIR') . '/css';
                 break;
             case 'get_less_out_dir' :
                 $protocol = false;
                 if (isset($params['protocol']) && $params['protocol'] == true) {
                     $protocol = true;
                 }
-                return NGS()->getPublicOutputHost($ns, $protocol) . '/less';
+                return $httpUtils->getNgsStaticPath($ns, $protocol) . '/' . NGS()->get('PUBLIC_OUTPUT_DIR') . '/less';
                 break;
             case 'get_sass_out_dir' :
                 $protocol = false;
                 if (isset($params['protocol']) && $params['protocol'] == true) {
                     $protocol = true;
                 }
-                return NGS()->getPublicOutputHost($ns, $protocol) . '/sass';
+                return $httpUtils->getNgsStaticPath($ns, $protocol) . '/' . NGS()->get('PUBLIC_OUTPUT_DIR') . '/sass';
                 break;
             case 'get_template_dir' :
-                return NGS()->getTemplateDir($ns);
+                return realpath(NGS()->getModuleDirByNS($ns) . '/' . NGS()->get('TEMPLATES_DIR'));
                 break;
             case 'get_http_host' :
                 $protocol = false;
                 if (isset($params['protocol']) && $params['protocol'] == true) {
                     $protocol = true;
                 }
-                return NGS()->getHttpUtils()->getHttpHostByNs($ns, $protocol);
+                return $httpUtils->getHttpHostByNs($ns, $protocol);
                 break;
             case 'get_host' :
                 $protocol = false;
                 if (isset($params['protocol']) && $params['protocol'] == true) {
                     $protocol = true;
                 }
-                return NGS()->getHttpUtils()->getHost();
+                return $httpUtils->getHost();
                 break;
             case 'get_environment' :
-                return NGS()->getEnvironment();
+                $envConstantValue = NGS()->get('ENVIRONMENT');
+                $currentEnvironment = 'production'; // Default
+                if ($envConstantValue === 'development' || $envConstantValue === 'staging') {
+                    $currentEnvironment = $envConstantValue;
+                }
+                return $currentEnvironment;
                 break;
             case 'get_static_path' :
                 $protocol = false;
                 if (isset($params['protocol']) && $params['protocol'] == true) {
                     $protocol = true;
                 }
-                return NGS()->getHttpUtils()->getNgsStaticPath($ns, $protocol);
+                return $httpUtils->getNgsStaticPath($ns, $protocol);
                 break;
             case 'get_version' :
-                return NGS()->getVersion();
+                return NGS()->get('VERSION');
                 break;
             case 'get_media_url' :
                 if (isset(NGS()->getConfig()->API->params->media_url)) {
@@ -421,17 +442,17 @@ class NgsSmartyTemplater extends Smarty
 
     public function getSmartyCompileDir()
     {
-        return NGS()->getTemplateDir() . "/" . NGS()->getDefinedValue("SMARTY_COMPILE_DIR");
+        return realpath(NGS()->getModuleDirByNS('') . '/' . NGS()->get('TEMPLATES_DIR')) . "/" . NGS()->getDefinedValue("SMARTY_COMPILE_DIR");
     }
 
     public function getSmartyCacheDir()
     {
-        return NGS()->getTemplateDir() . "/" . NGS()->getDefinedValue("SMARTY_CACHE_DIR");
+        return realpath(NGS()->getModuleDirByNS('') . '/' . NGS()->get('TEMPLATES_DIR')) . "/" . NGS()->getDefinedValue("SMARTY_CACHE_DIR");
     }
 
     public function getSmartyConfigDir()
     {
-        return NGS()->getTemplateDir() . "/" . NGS()->getDefinedValue("SMARTY_CONFIG_DIR");
+        return realpath(NGS()->getModuleDirByNS('') . '/' . NGS()->get('TEMPLATES_DIR')) . "/" . NGS()->getDefinedValue("SMARTY_CONFIG_DIR");
     }
 
 }

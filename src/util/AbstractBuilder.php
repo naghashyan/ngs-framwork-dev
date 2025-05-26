@@ -37,22 +37,23 @@ abstract class AbstractBuilder
      */
     public function streamFile(string $module, string $file): void
     {
+        $fileUtils = NGS()->createDefinedInstance('FILE_UTILS', \ngs\util\FileUtils::class);
         if ($this->getEnvironment() === 'production') {
-            $filePath = realpath(NGS()->getPublicDir() . '/' . $file);
+            $filePath = realpath((NGS()->getModuleDirByNS('') . '/' . NGS()->get('PUBLIC_DIR')) . '/' . $file);
             if (strpos($file, NGS()->getDefinedValue('PUBLIC_OUTPUT_DIR')) === false) {
                 if (!$filePath) {
-                    throw new DebugException(NGS()->getPublicDir() . '/' . $file . ' NOT FOUND');
+                    throw new DebugException((NGS()->getModuleDirByNS('') . '/' . NGS()->get('PUBLIC_DIR')) . '/' . $file . ' NOT FOUND');
                 }
             } elseif (file_exists($filePath) === false) {
                 $this->build($file);
             }
-            NGS()->getFileUtils()->sendFile($filePath, array('mimeType' => $this->getContentType(), 'cache' => true));
+            $fileUtils->sendFile($filePath, array('mimeType' => $this->getContentType(), 'cache' => true));
             return;
         }
         if (strpos($file, 'devout') !== false) {
             $realFile = substr($file, strpos($file, '/') + 1);
 
-            $realFile = realpath(NGS()->getPublicDir($module) . '/' . $realFile);
+            $realFile = realpath((NGS()->getModuleDirByNS($module) . '/' . NGS()->get('PUBLIC_DIR')) . '/' . $realFile);
             if ($realFile === null) {
                 throw new DebugException($file . ' not found');
             }
@@ -62,9 +63,9 @@ abstract class AbstractBuilder
             echo $buffer;
             return;
         }
-        $realFile = realpath(NGS()->getPublicDir($module) . '/' . $file);
+        $realFile = realpath((NGS()->getModuleDirByNS($module) . '/' . NGS()->get('PUBLIC_DIR')) . '/' . $file);
         if (file_exists($realFile)) {
-            NGS()->getFileUtils()->sendFile($realFile, array('mimeType' => $this->getContentType(), 'cache' => false));
+            $fileUtils->sendFile($realFile, array('mimeType' => $this->getContentType(), 'cache' => false));
             return;
         }
 
@@ -86,6 +87,7 @@ abstract class AbstractBuilder
      */
     protected function getBuilderArr($builders, $file = null)
     {
+        $moduleRoutesEngine = NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', \ngs\routes\NgsModuleRoutes::class);
         $tmpArr = array();
         foreach ($builders as $key => $value) {
             if (strpos($file, $value->output_file) === false) {
@@ -133,11 +135,11 @@ abstract class AbstractBuilder
                         }
                     }
                 } else {
-                    $module = NGS()->getModulesRoutesEngine()->getModuleNS();
+                    $module = $moduleRoutesEngine->getModuleNS();
                     if (isset($value->module)) {
                         $module = $value->module;
                     }
-                    if ($module == NGS()->getModulesRoutesEngine()->getDefaultNS()) {
+                    if ($module == $moduleRoutesEngine->getDefaultNS()) {
                         $module = null;
                     }
                     $type = null;
@@ -250,7 +252,12 @@ abstract class AbstractBuilder
 
     protected function getEnvironment(): string
     {
-        return NGS()->getEnvironment();
+        $envConstantValue = NGS()->get('ENVIRONMENT');
+        $currentEnvironment = 'production'; // Default
+        if ($envConstantValue === 'development' || $envConstantValue === 'staging') {
+            $currentEnvironment = $envConstantValue;
+        }
+        return $currentEnvironment;
     }
 
     abstract protected function getItemDir($module);
@@ -297,7 +304,7 @@ abstract class AbstractBuilder
         $publicDir = $this->resolveDir(NGS()->get('PUBLIC_DIR'));
 
         // 2) append the configured output folder constant and the user’s subdir
-        $outputConstant = $this->get('PUBLIC_OUTPUT_DIR');
+        $outputConstant = NGS()->get('PUBLIC_OUTPUT_DIR');
         $targetPath     = rtrim($publicDir, '/')
             . '/' . trim($outputConstant, '/')
             . '/' . trim($subDirName, '/');

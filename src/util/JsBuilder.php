@@ -46,19 +46,19 @@ class JsBuilder extends AbstractBuilder
             if ($value["module"] != null) {
                 $module = $value["module"];
             }
-            $inputFile = NGS()->getHttpUtils()->getHttpHostByNs($module) . "/js/" . trim(str_replace("\\", "/", $value["file"]));
+            $inputFile = NGS()->createDefinedInstance('HTTP_UTILS', \ngs\util\HttpUtils::class)->getHttpHostByNs($module) . "/js/" . trim(str_replace("\\", "/", $value["file"]));
             echo("document.write('<script type=\"text/javascript\" src=\"" . $inputFile . "\"></script>');\n\r");
         }
     }
 
     protected function getItemDir($module)
     {
-        return NGS()->getJsDir($module);
+        return realpath(NGS()->getModuleDirByNS($module) . '/' . NGS()->get('JS_DIR'));
     }
 
     protected function getBuilderFile()
     {
-        return realpath(NGS()->getJsDir() . '/builder.json');
+        return realpath(NGS()->getModuleDirByNS('') . '/' . NGS()->get('JS_DIR') . '/builder.json');
     }
 
     protected function getEnvironment(): string

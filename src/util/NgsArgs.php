@@ -145,7 +145,7 @@ class NgsArgs
         $type = substr($m, 0, 3);
 
         // retrieving the field name
-        $fieldName = NGS()->getNgsUtils()->lowerFirstLetter(substr($m, 3));
+        $fieldName = NGS()->createDefinedInstance('NGS_UTILS', \ngs\util\NgsUtils::class)->lowerFirstLetter(substr($m, 3));
         if ($type === 'set') {
             if (count($a) === 1) {
                 $this->$fieldName = $a[0];
@@ -204,7 +204,7 @@ class NgsArgs
             if ($this->inputData() === null) {
                 return;
             }
-            if (NGS()->getNgsUtils()->isJson($this->inputData())) {
+            if (NGS()->createDefinedInstance('NGS_UTILS', \ngs\util\NgsUtils::class)->isJson($this->inputData())) {
                 $this->setArgs(json_decode($this->inputData(), true, 512, JSON_THROW_ON_ERROR));
             } else {
                 parse_str($this->inputData(), $parsedRequestBody);
@@ -226,7 +226,7 @@ class NgsArgs
     {
         try {
             if ($this->inputArgs === null) {
-                if (!NGS()->getNgsUtils()->isJson($this->inputData())) {
+                if (!NGS()->createDefinedInstance('NGS_UTILS', \ngs\util\NgsUtils::class)->isJson($this->inputData())) {
                     throw new DebugException('response body is not json');
                 }
                 $this->inputArgs = new NgsArgs();

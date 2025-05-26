@@ -48,8 +48,11 @@ class Dispatcher
     {
         $this->getSubscribersAndSubscribeToEvents();
         try {
+            $routesEngine = NGS()->createDefinedInstance('ROUTES_ENGINE', \ngs\routes\NgsRoutes::class);
+            $httpUtils = NGS()->createDefinedInstance('HTTP_UTILS', \ngs\util\HttpUtils::class);
+            $templateEngine = NGS()->createDefinedInstance('TEMPLATE_ENGINE', \ngs\templater\NgsTemplater::class);
             if ($routesArr === null) {
-                $routesArr = NGS()->getRoutesEngine()->getDynamicLoad(NGS()->getHttpUtils()->getRequestUri());
+                $routesArr = $routesEngine->getDynamicLoad($httpUtils->getRequestUri());
             }       
             if(array_key_exists('file_url',$routesArr) && str_contains($routesArr['file_url'],'js/ngs')){
                 $routesArr['file_url']=str_replace("js/ngs","js/admin/ngs",$routesArr['file_url']);
@@ -62,7 +65,7 @@ class Dispatcher
             }
             switch ($routesArr['type']) {
                 case 'load' :
-                    NGS()->getTemplateEngine();
+                    // $templateEngine initialized already
                     if (isset($_GET['ngsValidate']) && $_GET['ngsValidate'] === 'true') {
                         $this->validate($routesArr['action']);
                     } else if (isset(NGS()->args()->args()['ngsValidate']) && NGS()->args()->args()['ngsValidate']) {
@@ -72,14 +75,14 @@ class Dispatcher
                     }
                     break;
                 case 'api_load':
-                    NGS()->getTemplateEngine();
+                    // $templateEngine initialized already
                     $this->loadApiPage($routesArr);
                 case 'action' :
-                    NGS()->getTemplateEngine();
+                    // $templateEngine initialized already
                     $this->doAction($routesArr['action']);
                     break;
                 case 'api_action':
-                    NGS()->getTemplateEngine();
+                    // $templateEngine initialized already
                     $this->doApiAction($routesArr);
                     exit;
                 case 'file' :
@@ -87,11 +90,16 @@ class Dispatcher
                     break;
             }
         } catch (DebugException $ex) {
-            if (NGS()->getEnvironment() !== 'production') {
+            $envConstantValue = NGS()->get('ENVIRONMENT');
+            $currentEnvironment = 'production'; // Default
+            if ($envConstantValue === 'development' || $envConstantValue === 'staging') {
+                $currentEnvironment = $envConstantValue;
+            }
+            if ($currentEnvironment !== 'production') {
                 $ex->display();
                 return;
             }
-            $routesArr = NGS()->getRoutesEngine()->getNotFoundLoad();
+            $routesArr = $routesEngine->getNotFoundLoad();
             if ($routesArr === null || $this->isRedirect === true) {
                 echo '404';
                 exit;
@@ -99,14 +107,14 @@ class Dispatcher
             $this->isRedirect = true;
             $this->dispatch($routesArr);
         } catch (RedirectException $ex) {
-            NGS()->getHttpUtils()->redirect($ex->getRedirectTo());
+            $httpUtils->redirect($ex->getRedirectTo());
         } catch (NotFoundException $ex) {
             try {
                 if ($ex->getRedirectUrl() !== '') {
-                    NGS()->getHttpUtils()->redirect($ex->getRedirectUrl());
+                    $httpUtils->redirect($ex->getRedirectUrl());
                     return;
                 }
-                $routesArr = NGS()->getRoutesEngine()->getNotFoundLoad();
+                $routesArr = $routesEngine->getNotFoundLoad();
                 if ($routesArr == null || $this->isRedirect === true) {
                     echo '404';
                     exit;
@@ -118,11 +126,11 @@ class Dispatcher
                 exit;
             }
         } catch (NgsErrorException $ex) {
-            NGS()->getTemplateEngine()->setHttpStatusCode($ex->getHttpCode());
-            NGS()->getTemplateEngine()->assignJson('code', $ex->getCode());
-            NGS()->getTemplateEngine()->assignJson('msg', $ex->getMessage());
-            NGS()->getTemplateEngine()->assignJson('params', $ex->getParams());
-            NGS()->getTemplateEngine()->display(true);
+            $templateEngine->setHttpStatusCode($ex->getHttpCode());
+            $templateEngine->assignJson('code', $ex->getCode());
+            $templateEngine->assignJson('msg', $ex->getMessage());
+            $templateEngine->assignJson('params', $ex->getParams());
+            $templateEngine->display(true);
         } catch (InvalidUserException $ex) {
             $this->handleInvalidUserAndNoAccessException($ex);
         } catch (NoAccessException $ex) {
@@ -157,11 +165,12 @@ class Dispatcher
             if (!$this->validateRequest($loadObj)) {
                 $loadObj->onNoAccess();
             }
-            $loadObj->setLoadName(NGS()->getRoutesEngine()->getContentLoad());
+            $loadObj->setLoadName(NGS()->createDefinedInstance('ROUTES_ENGINE', \ngs\routes\NgsRoutes::class)->getContentLoad());
             $loadObj->service();
-            NGS()->getTemplateEngine()->setType($loadObj->getNgsLoadType());
-            NGS()->getTemplateEngine()->setTemplate($loadObj->getTemplate());
-            NGS()->getTemplateEngine()->setPermalink(NGS()->getLoadMapper()->getNgsPermalink());
+            $templateEngine = NGS()->createDefinedInstance('TEMPLATE_ENGINE', \ngs\templater\NgsTemplater::class);
+            $templateEngine->setType($loadObj->getNgsLoadType());
+            $templateEngine->setTemplate($loadObj->getTemplate());
+            $templateEngine->setPermalink(NGS()->createDefinedInstance('LOAD_MAPPER', \ngs\routes\NgsLoadMapper::class)->getNgsPermalink());
             if (NGS()->get('SEND_HTTP_PUSH')) {
                 Pusher::getInstance()->push();
             }
@@ -209,13 +218,14 @@ class Dispatcher
             }
             //$loadObj->setLoadName(NGS()->getRoutesEngine()->getContentLoad());
             $loadObj->service();
+            $templateEngine = NGS()->createDefinedInstance('TEMPLATE_ENGINE', \ngs\templater\NgsTemplater::class);
             if (method_exists($loadObj, 'getNgsLoadType')) {
-                NGS()->getTemplateEngine()->setType($loadObj->getNgsLoadType());
+                $templateEngine->setType($loadObj->getNgsLoadType());
             }
             if (method_exists($loadObj, 'getTemplate')) {
-                NGS()->getTemplateEngine()->setTemplate($loadObj->getTemplate());
+                $templateEngine->setTemplate($loadObj->getTemplate());
             }
-            NGS()->getTemplateEngine()->setPermalink(NGS()->getLoadMapper()->getNgsPermalink());
+            $templateEngine->setPermalink(NGS()->createDefinedInstance('LOAD_MAPPER', \ngs\routes\NgsLoadMapper::class)->getNgsPermalink());
             if (NGS()->get('SEND_HTTP_PUSH')) {
                 Pusher::getInstance()->push();
             }
@@ -253,11 +263,12 @@ class Dispatcher
             if (!$this->validateRequest($loadObj)) {
                 $loadObj->onNoAccess();
             }
-            $loadObj->setLoadName(NGS()->getRoutesEngine()->getContentLoad());
+            $loadObj->setLoadName(NGS()->createDefinedInstance('ROUTES_ENGINE', \ngs\routes\NgsRoutes::class)->getContentLoad());
             $loadObj->validate();
             //passing arguments
-            NGS()->getTemplateEngine()->setType('json');
-            NGS()->getTemplateEngine()->assignJsonParams($loadObj->getParams());
+            $templateEngine = NGS()->createDefinedInstance('TEMPLATE_ENGINE', \ngs\templater\NgsTemplater::class);
+            $templateEngine->setType('json');
+            $templateEngine->assignJsonParams($loadObj->getParams());
             $this->displayResult();
             if (PHP_SAPI === 'fpm-fcgi') {
                 session_write_close();
@@ -303,8 +314,9 @@ class Dispatcher
             }
             $actionObj->service();
             //passing arguments
-            NGS()->getTemplateEngine()->setType('json');
-            NGS()->getTemplateEngine()->assignJsonParams($actionObj->getParams());
+            $templateEngine = NGS()->createDefinedInstance('TEMPLATE_ENGINE', \ngs\templater\NgsTemplater::class);
+            $templateEngine->setType('json');
+            $templateEngine->assignJsonParams($actionObj->getParams());
             $this->displayResult();
             if (php_sapi_name() === 'fpm-fcgi') {
                 session_write_close();
@@ -348,8 +360,9 @@ class Dispatcher
             }
             $actionObj->service();
             //passing arguments
-            NGS()->getTemplateEngine()->setType('json');
-            NGS()->getTemplateEngine()->assignJsonParams($actionObj->getParams());
+            $templateEngine = NGS()->createDefinedInstance('TEMPLATE_ENGINE', \ngs\templater\NgsTemplater::class);
+            $templateEngine->setType('json');
+            $templateEngine->assignJsonParams($actionObj->getParams());
             $this->displayResult();
             if (php_sapi_name() === 'fpm-fcgi') {
                 session_write_close();
@@ -372,11 +385,28 @@ class Dispatcher
 
     private function streamStaticFile($fileArr)
     {
-        $filePath = realpath(NGS()->getPublicDir($fileArr['module']) . '/' . $fileArr['file_url']);
+        $publicDirForModule = realpath(NGS()->getModuleDirByNS($fileArr['module']) . '/' . NGS()->get('PUBLIC_DIR'));
+        $filePath = realpath($publicDirForModule . '/' . $fileArr['file_url']);
         if (file_exists($filePath)) {
-            $stramer = NGS()->getFileUtils();
+            $stramer = NGS()->createDefinedInstance('FILE_UTILS', \ngs\util\FileUtils::class);
         } else {
-            $stramer = NGS()->getFileStreamerByType($fileArr['file_type']);
+            switch ($fileArr['file_type']) {
+                case 'js' : 
+                    $stramer = NGS()->createDefinedInstance('JS_BUILDER', \ngs\util\JsBuilderV2::class);
+                    break;
+                case 'css' : 
+                    $stramer = NGS()->createDefinedInstance('CSS_BUILDER', \ngs\util\CssBuilder::class);
+                    break;
+                case 'less' : 
+                    $stramer = NGS()->createDefinedInstance('LESS_BUILDER', \ngs\util\LessBuilder::class);
+                    break;
+                case 'sass' : 
+                    $stramer = NGS()->createDefinedInstance('SASS_BUILDER', \ngs\util\SassBuilder::class);
+                    break;
+                default : 
+                    $stramer = NGS()->createDefinedInstance('FILE_UTILS', \ngs\util\FileUtils::class);
+                    break;
+            }
         }
         $stramer->streamFile($fileArr['module'], $fileArr['file_url']);
     }
@@ -387,21 +417,23 @@ class Dispatcher
      */
     private function handleInvalidUserAndNoAccessException($ex): void
     {
+        $httpUtils = NGS()->createDefinedInstance('HTTP_UTILS', \ngs\util\HttpUtils::class);
+        $templateEngine = NGS()->createDefinedInstance('TEMPLATE_ENGINE', \ngs\templater\NgsTemplater::class);
 
-        if (!NGS()->getHttpUtils()->isAjaxRequest() && !NGS()->getDefinedValue('display_json')) {
-            NGS()->getHttpUtils()->redirect($ex->getRedirectTo());
+        if (!$httpUtils->isAjaxRequest() && !NGS()->getDefinedValue('display_json')) {
+            $httpUtils->redirect($ex->getRedirectTo());
             return;
         }
-        NGS()->getTemplateEngine()->setHttpStatusCode($ex->getHttpCode());
-        NGS()->getTemplateEngine()->assignJson('code', $ex->getCode());
-        NGS()->getTemplateEngine()->assignJson('msg', $ex->getMessage());
+        $templateEngine->setHttpStatusCode($ex->getHttpCode());
+        $templateEngine->assignJson('code', $ex->getCode());
+        $templateEngine->assignJson('msg', $ex->getMessage());
         if ($ex->getRedirectTo() !== '') {
-            NGS()->getTemplateEngine()->assignJson('redirect_to', $ex->getRedirectTo());
+            $templateEngine->assignJson('redirect_to', $ex->getRedirectTo());
         }
         if ($ex->getRedirectToLoad() !== '') {
-            NGS()->getTemplateEngine()->assignJson('redirect_to_load', $ex->getRedirectToLoad());
+            $templateEngine->assignJson('redirect_to_load', $ex->getRedirectToLoad());
         }
-        NGS()->getTemplateEngine()->display(true);
+        $templateEngine->display(true);
     }
 
     /**
@@ -414,7 +446,7 @@ class Dispatcher
      */
     private function validateRequest($request)
     {
-        if (NGS()->getSessionManager()->validateRequest($request)) {
+        if (NGS()->createDefinedInstance('SESSION_MANAGER', \ngs\session\AbstractSessionManager::class)->validateRequest($request)) {
             return true;
         }
         return false;
@@ -427,7 +459,7 @@ class Dispatcher
      */
     public function getSubscribersAndSubscribeToEvents(bool $loadAll = false)
     {
-        $adminToolsSubscribers = NGS()->getConfigDir(NGS()->get('NGS_CMS_NS')) . '/event_subscribers.json';
+        $adminToolsSubscribers = realpath(NGS()->getModuleDirByNS(NGS()->get('NGS_CMS_NS')) . '/' . NGS()->get('CONF_DIR')) . '/event_subscribers.json';
         $subscribers = [];
         if (file_exists($adminToolsSubscribers)) {
             $subscribers = json_decode(file_get_contents($adminToolsSubscribers), true);
@@ -439,7 +471,7 @@ class Dispatcher
                 $modulesData = json_decode(file_get_contents($moduleRouteDile), true);
                 $modules = $this->getModules($modulesData);
                 foreach ($modules as $module) {
-                    $modulSubscribers = NGS()->getConfigDir($module) . '/event_subscribers.json';
+                    $modulSubscribers = realpath(NGS()->getModuleDirByNS($module) . '/' . NGS()->get('CONF_DIR')) . '/event_subscribers.json';
                     if (file_exists($modulSubscribers)) {
                         $moduleSubscribers = json_decode(file_get_contents($modulSubscribers), true);
                         $subscribers = $this->mergeSubscribers($subscribers, $moduleSubscribers);
@@ -580,7 +612,7 @@ class Dispatcher
      */
     private function displayResult()
     {
-        NGS()->getTemplateEngine()->display();
+        NGS()->createDefinedInstance('TEMPLATE_ENGINE', \ngs\templater\NgsTemplater::class)->display();
     }
 
     private function notFound($msg)

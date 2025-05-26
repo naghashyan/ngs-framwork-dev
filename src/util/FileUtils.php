@@ -37,12 +37,18 @@ class FileUtils
      */
     public function streamFile(string $module, string $file): void
     {
-        $filePath = realpath(NGS()->getPublicDir($module) . '/' . $file);
+        $modulePublicDir = realpath(NGS()->getModuleDirByNS($module) . '/' . NGS()->get('PUBLIC_DIR'));
+        $filePath = realpath($modulePublicDir . '/' . $file);
         if ($filePath === false) {
             throw new DebugException('File Not Found');
         }
         $options = array();
-        if (NGS()->getEnvironment() !== 'production') {
+        $envConstantValue = NGS()->get('ENVIRONMENT');
+        $currentEnvironment = 'production'; // Default
+        if ($envConstantValue === 'development' || $envConstantValue === 'staging') {
+            $currentEnvironment = $envConstantValue;
+        }
+        if ($currentEnvironment !== 'production') {
             $options['cache'] = false;
         }
         try {
