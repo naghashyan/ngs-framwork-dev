@@ -33,11 +33,11 @@ class LessBuilder extends AbstractBuilder
     public function streamFile(string $module, string $file): void
     {
         if ($this->getEnvironment() === 'production') {
-            $filePath = realpath(NGS()->getPublicDir() . '/' . $file);
+            $filePath = realpath((NGS()->get('NGS_ROOT') . '/' . NGS()->get('PUBLIC_DIR')) . '/' . $file);
             if (!$filePath) {
                 $this->build($file, true);
             }
-            NGS()->getFileUtils()->sendFile($filePath, array('mimeType' => $this->getContentType(), 'cache' => true));
+            NGS()->createDefinedInstance('FILE_UTILS', \ngs\util\FileUtils::class)->sendFile($filePath, array('mimeType' => $this->getContentType(), 'cache' => true));
             return;
         }
         $this->build($file, false);
@@ -54,7 +54,20 @@ class LessBuilder extends AbstractBuilder
             $options['compress'] = true;
         }
         $this->lessParser = new \Less_Parser($options);
-        $this->lessParser->parse('@NGS_PATH: \'' . NGS()->getHttpUtils()->getHttpHost(true) . '\';@NGS_MODULE_PATH: \'' . NGS()->getPublicHostByNS() . '\';');
+
+        // Prepare components for parser string
+        $httpUtilsForParser = NGS()->createDefinedInstance('HTTP_UTILS', \ngs\util\HttpUtils::class);
+        $ngsPathForParser = $httpUtilsForParser->getHttpHost(true); // This is for @NGS_PATH
+
+        $moduleRoutesEngineForParser = NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', \ngs\routes\NgsModuleRoutes::class);
+        $ngsModulePathForParser = '';
+        if ($moduleRoutesEngineForParser->isDefaultModule()) {
+            $ngsModulePathForParser = $httpUtilsForParser->getHttpHost(true, false); 
+        } else {
+            $currentModuleNsForParser = $moduleRoutesEngineForParser->getModuleNS();
+            $ngsModulePathForParser = $httpUtilsForParser->getHttpHost(true, false) . '/' . $currentModuleNsForParser;
+        }
+        $this->lessParser->parse('@NGS_PATH: \'' . $ngsPathForParser . '\';@NGS_MODULE_PATH: \'' . $ngsModulePathForParser . '\';');
         $this->setLessFiles($files);
         if ($mode) {
             $outFileName = $files['output_file'];
@@ -83,8 +96,8 @@ class LessBuilder extends AbstractBuilder
                 $modulePath = $value['module'];
                 $module = $value['module'];
             }
-            $lessHost = NGS()->getHttpUtils()->getHttpHostByNs($modulePath) . '/less/';
-            $lessDir = NGS()->getLessDir($module);
+            $lessHost = NGS()->createDefinedInstance('HTTP_UTILS', \ngs\util\HttpUtils::class)->getHttpHostByNs($modulePath) . '/less/';
+            $lessDir = realpath(NGS()->getModuleDirByNS($module) . '/' . NGS()->get('LESS_DIR'));
             $lessFilePath = realpath($lessDir . '/' . $value['file']);
             if ($lessFilePath === false) {
                 throw new DebugException('Please add or check if correct less file in builder under section ' . $value['file']);
@@ -118,7 +131,7 @@ class LessBuilder extends AbstractBuilder
 
     protected function getBuilderFile()
     {
-        return realpath(NGS()->getLessDir() . '/builder.json');
+        return realpath(NGS()->getModuleDirByNS('') . '/' . NGS()->get('LESS_DIR') . '/builder.json');
     }
 
     protected function getEnvironment(): string
