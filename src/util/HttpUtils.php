@@ -113,13 +113,16 @@ class HttpUtils
         if (strpos($uri, "?") !== false) {
             $uri = substr($uri, 0, strpos($uri, "?"));
         }
-        $moduleRoutesEngine = NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', \ngs\routes\NgsModuleRoutes::class);
-        if ($full === false && $moduleRoutesEngine->getModuleType() == "path") {
-            $delim = "";
-            if (strpos($uri, $moduleRoutesEngine->getModuleUri() . "/") !== false) {
-                $delim = "/";
+
+        if ($full === false) {
+            $moduleRoutesEngine = NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', \ngs\routes\NgsModuleRoutes::class);
+            if($moduleRoutesEngine->getModuleType() == "path"){
+                $delim = "";
+                if (strpos($uri, $moduleRoutesEngine->getModuleUri() . "/") !== false) {
+                    $delim = "/";
+                }
+                $uri = str_replace($moduleRoutesEngine->getModuleUri() . $delim, "", $uri);
             }
-            $uri = str_replace($moduleRoutesEngine->getModuleUri() . $delim, "", $uri);
         }
 
         return $uri;

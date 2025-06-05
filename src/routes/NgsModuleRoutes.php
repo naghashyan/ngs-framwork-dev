@@ -77,9 +77,11 @@ class NgsModuleRoutes
     private function getRouteConfig()
     {
         if (count($this->routes) == 0) {
-            $moduleRouteDile = realpath(NGS()->get('NGS_ROOT') . '/' . NGS()->get('CONF_DIR') . '/' . NGS()->get('NGS_MODULS_ROUTS'));
-            $this->routes = json_decode(file_get_contents($moduleRouteDile), true);
+            $moduleRouteFile = realpath(NGS()->get('NGS_ROOT') . '/' . NGS()->get('CONF_DIR') . '/' . NGS()->get('NGS_MODULS_ROUTS'));
+
+            $this->routes = json_decode(file_get_contents($moduleRouteFile), true);
         }
+
         return $this->routes;
     }
 
@@ -189,8 +191,7 @@ class NgsModuleRoutes
     protected function getModule()
     {
         if ($this->moduleArr != null) {
-            //FIXME
-            //return $this->moduleArr;
+            return $this->moduleArr;
         }
         $module = $this->getDefaultNS();
         $domain = NGS()->getHttpUtils()->_getHttpHost(true);
@@ -203,7 +204,9 @@ class NgsModuleRoutes
         $host = explode('.', $parsedUrl['path']);
 
         $uri = NGS()->getHttpUtils()->getRequestUri(true);
-        if ($this->moduleArr = $this->getModuleByURI($modulePart, $uri)) {
+        $this->moduleArr = $this->getModuleByURI($modulePart, $uri);
+
+        if ($this->moduleArr){
             $this->setModuleName($this->moduleArr['uri']);
             if (count($host) >= 3) {
                 $parentModule = $this->getModuleBySubDomain($modulePart, $host[0]);
@@ -213,8 +216,9 @@ class NgsModuleRoutes
             }
             return $this->moduleArr;
         }
-        if (count($host) >= 3) {
-            if ($this->moduleArr = $this->getModuleBySubDomain($modulePart, $host[0])) {
+
+      if (count($host) >= 3){
+            if ($this->moduleArr = $this->getModuleBySubDomain($modulePart, $host[0])){
                 $this->setModuleName($this->moduleArr['uri']);
                 return $this->moduleArr;
             }
