@@ -194,6 +194,7 @@ class NGS extends NGSDeprecated
 
         // Look up the class name from constants
         $className = $this->getDefinedValue($constantName);
+
         if (!class_exists($className)) {
             throw new DebugException(
                 sprintf('Class "%s" for constant "%s" not found.', $className, $constantName)
