@@ -7,6 +7,8 @@ use Composer\Package\RootPackageInterface;
 use ngs\event\EventManager;
 use ngs\event\structure\AbstractEventStructure;
 use ngs\event\subscriber\AbstractEventSubscriber;
+use ngs\routes\NgsModuleRoutes;
+use ngs\exceptions\NgsException;
 
 class NGSModule
 {
@@ -15,7 +17,7 @@ class NGSModule
 
     protected array $constants;
     protected ?array $config;
-    protected ?\ngs\routes\NgsModuleRoutes $routesManager;
+    protected ?NgsModuleRoutes $routesManager;
     private $events = [];
     protected string $parentDir;
 
@@ -131,7 +133,7 @@ class NGSModule
         }
     }
 
-    public function getRoutesManager(): ?\ngs\routes\NgsModuleRoutes
+    public function getRoutesManager(): ?NgsModuleRoutes
     {
         if ($this->routesManager !== null) {
             return $this->routesManager;
@@ -139,8 +141,8 @@ class NGSModule
         try {
             $manager = $this->getConstant('MODULES_ROUTES_ENGINE');
             $this->routesManager = new $manager();
-        } catch (Exception $e) {
-            throw new \ngs\exceptions\NgsException('ROUTES ENGINE NOT FOUND, please check in constants.php ROUTES_ENGINE variable', 1);
+        } catch (\Exception $e) {
+            throw new NgsException('ROUTES ENGINE NOT FOUND, please check in constants.php ROUTES_ENGINE variable', 1);
         }
         return $this->routesManager;
     }
