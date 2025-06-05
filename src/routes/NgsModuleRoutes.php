@@ -194,7 +194,7 @@ class NgsModuleRoutes
             return $this->moduleArr;
         }
         $module = $this->getDefaultNS();
-        $domain = NGS()->getHttpUtils()->_getHttpHost(true);
+        $domain = NGS()->getHttpUtils()->getHttpHost(true);
         $parsedUrl = $domain ? parse_url($domain) : ['path' => ''];
 
         $parsedUrl['path'] = $parsedUrl['path'] ?? '';

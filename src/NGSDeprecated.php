@@ -538,7 +538,7 @@ abstract class NGSDeprecated
      */
     public function getRoutesEngine()
     {
-        return $this->createDefinedInstance('ROUTES_ENGINE', ngs\routes\NgsRoutes::class);
+        return $this->createDefinedInstance('ROUTES_ENGINE', \ngs\routes\NgsRoutes::class);
     }
 
     /**
