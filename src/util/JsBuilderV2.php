@@ -43,15 +43,15 @@ class JsBuilderV2 extends AbstractBuilder
 
     public function streamDevFile(string $module, string $file): void
     {
-
+        $fileUtils = NGS()->createDefinedInstance('FILE_UTILS', \ngs\util\FileUtils::class);
         $jsFile = substr($file, stripos($file, NGS()->get('JS_DIR')) + strlen(NGS()->get('JS_DIR')) + 1);
-        $realFile = realpath(NGS()->getJsDir($module) . '/' . $jsFile);
+        $realFile = realpath(realpath(NGS()->getModuleDirByNS($module) . '/' . NGS()->get('JS_DIR')) . '/' . $jsFile);
         if (file_exists($realFile)) {
-            NGS()->getFileUtils()->sendFile($realFile, array('mimeType' => $this->getContentType(), 'cache' => false));
+            $fileUtils->sendFile($realFile, array('mimeType' => $this->getContentType(), 'cache' => false));
             return;
         }
         $matches = explode('/', $jsFile);
-        $moduleJsDir = NGS()->getJsDir($matches[0]);
+        $moduleJsDir = realpath(NGS()->getModuleDirByNS($matches[0]) . '/' . NGS()->get('JS_DIR'));
         if (!$moduleJsDir) {
             throw new DebugException($jsFile . " File not found");
         }
@@ -61,7 +61,7 @@ class JsBuilderV2 extends AbstractBuilder
         if ($realFile === false) {
             throw new DebugException($jsFile . " File not found");
         }
-        NGS()->getFileUtils()->sendFile($realFile, array('mimeType' => $this->getContentType(), 'cache' => false));
+        $fileUtils->sendFile($realFile, array('mimeType' => $this->getContentType(), 'cache' => false));
     }
 
     /**
@@ -86,18 +86,18 @@ class JsBuilderV2 extends AbstractBuilder
             if ($value['module'] !== null) {
                 $module = $value['module'];
             }
-            $inputFile = NGS()->getHttpUtils()->getHttpHostByNs($module) . '/js/' . trim(str_replace('\\', '/', $value['file']));
+            $inputFile = NGS()->createDefinedInstance('HTTP_UTILS', \ngs\util\HttpUtils::class)->getHttpHostByNs($module) . '/js/' . trim(str_replace('\\', '/', $value['file']));
         }
     }
 
     protected function getItemDir($module)
     {
-        return NGS()->getJsDir($module);
+        return realpath(NGS()->getModuleDirByNS($module) . '/' . NGS()->get('JS_DIR'));
     }
 
     protected function getBuilderFile()
     {
-        return realpath(NGS()->getJsDir() . ' / builder.json');
+        return realpath(NGS()->getModuleDirByNS('') . '/' . NGS()->get('JS_DIR') . ' / builder.json');
     }
 
     protected function getEnvironment(): string

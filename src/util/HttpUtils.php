@@ -71,16 +71,17 @@ class HttpUtils
 
     public function getHttpHostByNs($ns = "", $withProtocol = false)
     {
+        $moduleRoutesEngine = NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', \ngs\routes\NgsModuleRoutes::class);
         $httpHost = $this->getHttpHost(true, $withProtocol);
-        if (NGS()->getModulesRoutesEngine()->getModuleType() === "path") {
+        if ($moduleRoutesEngine->getModuleType() === "path") {
             if ($ns == "") {
                 return $httpHost;
             }
-            if (NGS()->getModulesRoutesEngine()->isDefaultModule()) {
+            if ($moduleRoutesEngine->isDefaultModule()) {
 
             }
 
-            return $httpHost . "/" . NGS()->getModulesRoutesEngine()->getModuleUri();
+            return $httpHost . "/" . $moduleRoutesEngine->getModuleUri();
         }
         if ($ns == "") {
             return $httpHost;
@@ -90,17 +91,18 @@ class HttpUtils
 
     public function getNgsStaticPath($ns = "", $withProtocol = false)
     {
+        $moduleRoutesEngine = NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', \ngs\routes\NgsModuleRoutes::class);
         $httpHost = $this->getHttpHost(true, $withProtocol);
-        if (NGS()->getModulesRoutesEngine()->getModuleType() === "path") {
-            if ($ns == "" || NGS()->getModulesRoutesEngine()->isCurrentModule($ns)) {
-                return $httpHost . "/" . NGS()->getModulesRoutesEngine()->getModuleUri();
+        if ($moduleRoutesEngine->getModuleType() === "path") {
+            if ($ns == "" || $moduleRoutesEngine->isCurrentModule($ns)) {
+                return $httpHost . "/" . $moduleRoutesEngine->getModuleUri();
             }
         }
         if ($ns == "") {
-            if (NGS()->getModulesRoutesEngine()->isDefaultModule()) {
+            if ($moduleRoutesEngine->isDefaultModule()) {
                 return $httpHost;
             }
-            $ns = NGS()->getModulesRoutesEngine()->getModuleNS();
+            $ns = $moduleRoutesEngine->getModuleNS();
         }
         return $this->getHttpHost(true, $withProtocol) . "/" . $ns;
     }
@@ -112,12 +114,13 @@ class HttpUtils
         if (strpos($uri, "?") !== false) {
             $uri = substr($uri, 0, strpos($uri, "?"));
         }
-        if ($full === false && NGS()->getModulesRoutesEngine()->getModuleType() == "path") {
+        $moduleRoutesEngine = NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', \ngs\routes\NgsModuleRoutes::class);
+        if ($full === false && $moduleRoutesEngine->getModuleType() == "path") {
             $delim = "";
-            if (strpos($uri, NGS()->getModulesRoutesEngine()->getModuleUri() . "/") !== false) {
+            if (strpos($uri, $moduleRoutesEngine->getModuleUri() . "/") !== false) {
                 $delim = "/";
             }
-            $uri = str_replace(NGS()->getModulesRoutesEngine()->getModuleUri() . $delim, "", $uri);
+            $uri = str_replace($moduleRoutesEngine->getModuleUri() . $delim, "", $uri);
         }
 
         return $uri;

@@ -42,7 +42,7 @@ class CssBuilder extends AbstractBuilder
             if ($value['module'] == null) {
                 $module = 'ngs';
             }
-            $filePath = NGS()->getCssDir($module) . '/' . trim($value['file']);
+            $filePath = realpath(NGS()->getModuleDirByNS($module) . '/' . NGS()->get('CSS_DIR')) . '/' . trim($value['file']);
             $inputFile = realpath($filePath);
             if (!$inputFile) {
                 throw new DebugException($filePath . ' not found');
@@ -59,7 +59,19 @@ class CssBuilder extends AbstractBuilder
 
     protected function customBufferUpdates($buffer)
     {
-        return str_replace(['@NGS_PATH', '@NGS_MODULE_PATH'], [NGS()->getHttpUtils()->getHttpHost(true), NGS()->getPublicHostByNS()], $buffer);
+        $httpUtilsInst = NGS()->createDefinedInstance('HTTP_UTILS', \ngs\util\HttpUtils::class);
+        $ngsPath = $httpUtilsInst->getHttpHost(true);
+
+        $moduleRoutesEngineInst = NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', \ngs\routes\NgsModuleRoutes::class);
+        $ngsModulePath = '';
+        if ($moduleRoutesEngineInst->isDefaultModule()) {
+            $ngsModulePath = $httpUtilsInst->getHttpHost(true, false); 
+        } else {
+            $currentModuleNs = $moduleRoutesEngineInst->getModuleNS();
+            $ngsModulePath = $httpUtilsInst->getHttpHost(true, false) . '/' . $currentModuleNs;
+        }
+
+        return str_replace(['@NGS_PATH', '@NGS_MODULE_PATH'], [$ngsPath, $ngsModulePath], $buffer);
     }
 
     public function getOutputDir(): string
@@ -86,19 +98,19 @@ class CssBuilder extends AbstractBuilder
             if ($value['module'] != null) {
                 $module = $value['module'];
             }
-            $inputFile = NGS()->getHttpUtils()->getHttpHostByNs($module) . '/devout/css/' . trim($value['file']);
+            $inputFile = NGS()->createDefinedInstance('HTTP_UTILS', \ngs\util\HttpUtils::class)->getHttpHostByNs($module) . '/devout/css/' . trim($value['file']);
             echo '@import url("' . $inputFile . '");';
         }
     }
 
     protected function getItemDir($module)
     {
-        return NGS()->getCssDir($module);
+        return realpath(NGS()->getModuleDirByNS($module) . '/' . NGS()->get('CSS_DIR'));
     }
 
     protected function getBuilderFile()
     {
-        return realpath(NGS()->getCssDir() . '/builder.json');
+        return realpath(NGS()->getModuleDirByNS('') . '/' . NGS()->get('CSS_DIR') . '/builder.json');
     }
 
     protected function getContentType()
