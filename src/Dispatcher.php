@@ -53,9 +53,9 @@ class Dispatcher
             $templateEngine = NGS()->createDefinedInstance('TEMPLATE_ENGINE', \ngs\templater\NgsTemplater::class);
             if ($routesArr === null) {
                 $routesArr = $routesEngine->getDynamicLoad($httpUtils->getRequestUri());
-            }       
-            if(array_key_exists('file_url',$routesArr) && str_contains($routesArr['file_url'],'js/ngs')){
-                $routesArr['file_url']=str_replace("js/ngs","js/admin/ngs",$routesArr['file_url']);
+            }
+            if (array_key_exists('file_url', $routesArr) && str_contains($routesArr['file_url'], 'js/ngs')) {
+                $routesArr['file_url'] = str_replace("js/ngs", "js/admin/ngs", $routesArr['file_url']);
             }
             if ($routesArr['matched'] === false) {
                 throw new NotFoundException('Load/Action Not found');
@@ -135,7 +135,7 @@ class Dispatcher
             $this->handleInvalidUserAndNoAccessException($ex);
         } catch (NoAccessException $ex) {
             $this->handleInvalidUserAndNoAccessException($ex);
-        } catch (\Error $error){
+        } catch (\Error $error) {
             var_dump($error);
             die();
         }
@@ -391,19 +391,19 @@ class Dispatcher
             $stramer = NGS()->createDefinedInstance('FILE_UTILS', \ngs\util\FileUtils::class);
         } else {
             switch ($fileArr['file_type']) {
-                case 'js' : 
+                case 'js' :
                     $stramer = NGS()->createDefinedInstance('JS_BUILDER', \ngs\util\JsBuilderV2::class);
                     break;
-                case 'css' : 
+                case 'css' :
                     $stramer = NGS()->createDefinedInstance('CSS_BUILDER', \ngs\util\CssBuilder::class);
                     break;
-                case 'less' : 
+                case 'less' :
                     $stramer = NGS()->createDefinedInstance('LESS_BUILDER', \ngs\util\LessBuilder::class);
                     break;
-                case 'sass' : 
+                case 'sass' :
                     $stramer = NGS()->createDefinedInstance('SASS_BUILDER', \ngs\util\SassBuilder::class);
                     break;
-                default : 
+                default :
                     $stramer = NGS()->createDefinedInstance('FILE_UTILS', \ngs\util\FileUtils::class);
                     break;
             }
@@ -508,10 +508,9 @@ class Dispatcher
                 if (!in_array($modules['dir'], $result)) {
                     $result[] = $modules['dir'];
                 }
-            }
-            else {
-                foreach($modules as $info) {
-                    if(is_array($info) && !in_array($info['dir'], $result)) {
+            } else {
+                foreach ($modules as $info) {
+                    if (is_array($info) && !in_array($info['dir'], $result)) {
                         $result[] = $info['dir'];
                     }
                 }
@@ -610,14 +609,10 @@ class Dispatcher
      *
      * @return void
      */
-    private function displayResult()
+    private function displayResult(): void
     {
         NGS()->createDefinedInstance('TEMPLATE_ENGINE', \ngs\templater\NgsTemplater::class)->display();
     }
 
-    private function notFound($msg)
-    {
-
-    }
 
 }
