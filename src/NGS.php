@@ -1,5 +1,6 @@
 <?php
 
+namespace ngs;
 
 /**
  * Base NGS class
@@ -137,7 +138,6 @@ class NGS extends NGSDeprecated
             } else {
                 $_prefix = $moduleRoutesEngine->getModuleNS();
             }
-
         } else {
             $_prefix = $prefix;
         }
@@ -240,10 +240,9 @@ class NGS extends NGSDeprecated
     private function loadModule(?string $moduleName = null, $environment = ""): string
     {
         $namespace = preg_replace('/-/', '/', $moduleName, 1);
-        $module = new $namespace . $moduleName($environment);
+        $module = new $namespace() . $moduleName($environment);
         return $module;
     }
-
 }
 
 /**
@@ -256,5 +255,7 @@ function NGS(string $module = '')
     return NGS::getInstance($module);
 }
 
-require_once('system/NgsDefaultConstants.php');
-NGS()->initialize();
+if (getenv('SKIP_NGS_INIT') !== 'true') {
+    require_once('system/NgsDefaultConstants.php');
+    NGS()->initialize();
+}

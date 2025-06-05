@@ -1,4 +1,5 @@
 <?php
+
 /**
  *
  * SolrDto parent Interface for all solr dtos
@@ -22,6 +23,5 @@ namespace ngs\dal\dto;
 
 interface SolrDtoInterface
 {
-
     public function getSchemeArray(): array;
 }

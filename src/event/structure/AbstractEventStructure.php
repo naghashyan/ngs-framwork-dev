@@ -1,4 +1,5 @@
 <?php
+
 /**
  * AbstractEventStructure manager class
  *
@@ -29,7 +30,7 @@ abstract class AbstractEventStructure
     }
 
 
-    public static abstract function getEmptyInstance(): AbstractEventStructure;
+    abstract public static function getEmptyInstance(): AbstractEventStructure;
 
     /**
      * can be added notification from UI
@@ -46,13 +47,13 @@ abstract class AbstractEventStructure
     {
         return $this->params;
     }
-    
+
     /**
      * indicates if bulk supported for this event
      *
      * @return bool
      */
-    public function bulkIsAvailable() :bool
+    public function bulkIsAvailable(): bool
     {
         return true;
     }
@@ -172,6 +173,4 @@ abstract class AbstractEventStructure
     {
         $this->notificationParams = $notificationParams;
     }
-
-
 }

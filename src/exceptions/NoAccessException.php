@@ -1,4 +1,5 @@
 <?php
+
 /**
  *
  * @author Levon Naghashyan <levon@naghashyan.com>
@@ -17,12 +18,13 @@
  */
 
 namespace ngs\exceptions {
-  class NoAccessException extends InvalidUserException {
+    class NoAccessException extends InvalidUserException
+    {
+        protected $httpCode = 403;
 
-    protected $httpCode = 403;
-
-    public function __construct($msg = "access denied", $code = -5) {
-      parent::__construct($msg, $code);
+        public function __construct($msg = "access denied", $code = -5)
+        {
+            parent::__construct($msg, $code);
+        }
     }
-  }
 }

@@ -1,4 +1,5 @@
 <?php
+
 /**
  *
  * This class is a template for all authorized user classes.
@@ -23,7 +24,6 @@ namespace ngs\security\users;
 
 abstract class AbstractNgsUser
 {
-
     /**
      * Abstract method for set user Id
      * Children of the NgsAbstractUser class should override this method
@@ -32,7 +32,7 @@ abstract class AbstractNgsUser
      *
      * @return void
      */
-    public abstract function setId(int $id);
+    abstract public function setId(int $id);
 
     /**
      * Abstract method for get user Id
@@ -42,7 +42,7 @@ abstract class AbstractNgsUser
      *
      * @return integer|null
      */
-    public abstract function getId();
+    abstract public function getId();
 
     /**
      * Abstract method for validate user,
@@ -52,7 +52,7 @@ abstract class AbstractNgsUser
      *
      * @return boolean
      */
-    public abstract function validate();
+    abstract public function validate();
 
     /**
      * Abstract method for getting user LEVEL (type),
@@ -60,7 +60,7 @@ abstract class AbstractNgsUser
      *
      * @return integer
      */
-    public abstract function getLevel();
+    abstract public function getLevel();
 
     /**
      * Abstract method for getting userDto,
@@ -68,6 +68,5 @@ abstract class AbstractNgsUser
      *
      * @return Object
      */
-    public abstract function getUserDto();
-
+    abstract public function getUserDto();
 }

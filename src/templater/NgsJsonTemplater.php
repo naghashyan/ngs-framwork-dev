@@ -1,4 +1,5 @@
 <?php
+
 /**
  * NGS predefined templater class
  * handle smarty and json responses
@@ -19,19 +20,17 @@
 
 namespace ngs\templater;
 
-
 class NgsJsonTemplater
 {
-
     /**
      * constructor
      * reading Smarty config and setting up smarty environment accordingly
      */
     private $smarty = null;
     private $template = null;
-    private $params = array();
+    private $params = [];
     private $permalink = null;
-    private $smartyParams = array();
+    private $smartyParams = [];
     private $httpStatusCode = 200;
 
 
@@ -102,10 +101,8 @@ class NgsJsonTemplater
             }
             preg_match_all('/\{\$(.*)(->|\[])(.*)\}/', $value, $matches);
             if (isset($matches[1][0]) && isset($this->params[$matches[1][0]])) {
-
             }
         }
         $results = print_r($jsonTemplate, true);
     }
-
 }

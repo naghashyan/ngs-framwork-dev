@@ -1,4 +1,5 @@
 <?php
+
 /**
  * abstract templater for all NGS loads and actions
  *
@@ -20,26 +21,23 @@ namespace ngs\templater;
 
 abstract class AbstractTemplater
 {
+    /**
+     * this method should assign params to templater
+     *
+     * @abstract
+     * @access public
+     * @param String $key
+     * @param mixed $value
+     * @return void
+     */
+    abstract public function assign(string $key, mixed $value): void;
 
-  /**
-   * this method should assign params to templater
-   *
-   * @abstract
-   * @access public
-   * @param String $key
-   * @param mixed $value
-   * @return void
-   */
-  public abstract function assign(string $key, mixed $value): void;
-
-  /**
-   * this method should display (echo) response result
-   *
-   * @abstract
-   * @access public
-   * @return void
-   */
-  public abstract function display();
-
-
+    /**
+     * this method should display (echo) response result
+     *
+     * @abstract
+     * @access public
+     * @return void
+     */
+    abstract public function display();
 }

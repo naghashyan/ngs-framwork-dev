@@ -1,4 +1,5 @@
 <?php
+
 /**
  * NGS predefined templater class
  * handle smarty and json responses
@@ -25,14 +26,13 @@ use Smarty\Smarty;
 
 class NgsSmartyTemplater extends Smarty
 {
-
     private bool $isHtml = true;
     private string $customJsHeader = '';
     /**
      * constructor
      * reading Smarty config and setting up smarty environment accordingly
      */
-    private $params = array();
+    private $params = [];
 
     /**
      * NgsSmartyTemplater constructor.
@@ -65,7 +65,7 @@ class NgsSmartyTemplater extends Smarty
         $this->compile_check = 1;
         if ($isHtml) {
             // register the outputfilter
-            $this->registerFilter('output', array($this, 'addScripts'));
+            $this->registerFilter('output', [$this, 'addScripts']);
         }
     }
 
@@ -76,9 +76,9 @@ class NgsSmartyTemplater extends Smarty
      * @param mixed $value
      * @return string
      */
-    public function jsonEncode(mixed $value) :string
+    public function jsonEncode(mixed $value): string
     {
-        if(!$value) {
+        if (!$value) {
             return "";
         }
 
@@ -93,9 +93,9 @@ class NgsSmartyTemplater extends Smarty
      * @param mixed $value
      * @return string
      */
-    public function printR(mixed $value) :string
+    public function printR(mixed $value): string
     {
-        if(!$value) {
+        if (!$value) {
             return "";
         }
 
@@ -139,7 +139,7 @@ class NgsSmartyTemplater extends Smarty
         if (isset($params['args']) && is_array($params['args'])) {
             NgsArgs::getInstance()->setArgs($params['args']);
         }
-        $loadObj = new $action;
+        $loadObj = new $action();
         $loadObj->setIsNestedLoad(true);
         $loadObj->setLoadName($action);
         $loadObj->initialize();
@@ -257,7 +257,7 @@ class NgsSmartyTemplater extends Smarty
             $ns = $params['ns'];
         }
         switch ($params['cmd']) {
-            case 'get_js_out_path' :
+            case 'get_js_out_path':
                 $protocol = false;
                 if (isset($params['protocol']) && $params['protocol'] == true) {
                     $protocol = true;
@@ -271,59 +271,59 @@ class NgsSmartyTemplater extends Smarty
                 }
                 return $httpUtils->getNgsStaticPath($ns, $protocol) . '/' . $publicJsOutputDir;
                 break;
-            case 'get_js_out_dir' :
+            case 'get_js_out_dir':
                 $protocol = false;
                 if (isset($params['protocol']) && $params['protocol'] == true) {
                     $protocol = true;
                 }
                 return $httpUtils->getNgsStaticPath($ns, $protocol) . '/' . NGS()->get('PUBLIC_OUTPUT_DIR') . '/js';
                 break;
-            case 'get_libs_out_dir' :
+            case 'get_libs_out_dir':
                 $protocol = false;
                 if (isset($params['protocol']) && $params['protocol'] == true) {
                     $protocol = true;
                 }
                 return $httpUtils->getNgsStaticPath($ns, $protocol) . '/libs';
                 break;
-            case 'get_css_out_dir' :
+            case 'get_css_out_dir':
                 $protocol = false;
                 if (isset($params['protocol']) && $params['protocol'] == true) {
                     $protocol = true;
                 }
                 return $httpUtils->getNgsStaticPath($ns, $protocol) . '/' . NGS()->get('PUBLIC_OUTPUT_DIR') . '/css';
                 break;
-            case 'get_less_out_dir' :
+            case 'get_less_out_dir':
                 $protocol = false;
                 if (isset($params['protocol']) && $params['protocol'] == true) {
                     $protocol = true;
                 }
                 return $httpUtils->getNgsStaticPath($ns, $protocol) . '/' . NGS()->get('PUBLIC_OUTPUT_DIR') . '/less';
                 break;
-            case 'get_sass_out_dir' :
+            case 'get_sass_out_dir':
                 $protocol = false;
                 if (isset($params['protocol']) && $params['protocol'] == true) {
                     $protocol = true;
                 }
                 return $httpUtils->getNgsStaticPath($ns, $protocol) . '/' . NGS()->get('PUBLIC_OUTPUT_DIR') . '/sass';
                 break;
-            case 'get_template_dir' :
+            case 'get_template_dir':
                 return realpath(NGS()->getModuleDirByNS($ns) . '/' . NGS()->get('TEMPLATES_DIR'));
                 break;
-            case 'get_http_host' :
+            case 'get_http_host':
                 $protocol = false;
                 if (isset($params['protocol']) && $params['protocol'] == true) {
                     $protocol = true;
                 }
                 return $httpUtils->getHttpHostByNs($ns, $protocol);
                 break;
-            case 'get_host' :
+            case 'get_host':
                 $protocol = false;
                 if (isset($params['protocol']) && $params['protocol'] == true) {
                     $protocol = true;
                 }
                 return $httpUtils->getHost();
                 break;
-            case 'get_environment' :
+            case 'get_environment':
                 $envConstantValue = NGS()->get('ENVIRONMENT');
                 $currentEnvironment = 'production'; // Default
                 if ($envConstantValue === 'development' || $envConstantValue === 'staging') {
@@ -331,22 +331,22 @@ class NgsSmartyTemplater extends Smarty
                 }
                 return $currentEnvironment;
                 break;
-            case 'get_static_path' :
+            case 'get_static_path':
                 $protocol = false;
                 if (isset($params['protocol']) && $params['protocol'] == true) {
                     $protocol = true;
                 }
                 return $httpUtils->getNgsStaticPath($ns, $protocol);
                 break;
-            case 'get_version' :
+            case 'get_version':
                 return NGS()->get('VERSION');
                 break;
-            case 'get_media_url' :
+            case 'get_media_url':
                 if (isset(NGS()->getConfig()->API->params->media_url)) {
                     return '' . NGS()->getConfig()->API->params->media_url;
                 }
                 break;
-            default :
+            default:
                 break;
         }
     }
@@ -426,7 +426,7 @@ class NgsSmartyTemplater extends Smarty
 
     protected function getCustomJsParams()
     {
-        return array();
+        return [];
     }
 
 
@@ -454,5 +454,4 @@ class NgsSmartyTemplater extends Smarty
     {
         return realpath(NGS()->getModuleDirByNS('') . '/' . NGS()->get('TEMPLATES_DIR')) . "/" . NGS()->getDefinedValue("SMARTY_CONFIG_DIR");
     }
-
 }

@@ -22,7 +22,6 @@ namespace ngs\util;
 
 class NgsUtils
 {
-
     /**
      *
      * return unique Id
@@ -36,7 +35,6 @@ class NgsUtils
         } catch (\Exception $ex) {
             return uniqid('ngs_', true);
         }
-
     }
 
     /**
@@ -67,12 +65,13 @@ class NgsUtils
         $stdObj = NGS()->getDynObject();
         foreach ($arr as $key => $value) {
             $last = substr(strrchr($key, '.'), 1);
-            if (!$last)
+            if (!$last) {
                 $last = $key;
+            }
             $node = $stdObj;
             foreach (explode('.', $key) as $key2) {
                 if (!isset($node->$key2)) {
-                    $node->$key2 = new \stdclass;
+                    $node->$key2 = new \stdclass();
                 }
                 if ($key2 === $last) {
                     if (is_string($value)) {
@@ -84,7 +83,6 @@ class NgsUtils
                     } else {
                         $node->$key2 = $value;
                     }
-
                 } else {
                     $node = $node->$key2;
                 }
@@ -109,6 +107,4 @@ class NgsUtils
             return false;
         }
     }
-
-
 }

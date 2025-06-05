@@ -1,4 +1,5 @@
 <?php
+
 /**
  * default ngs routing class
  * this class by default used from dispacher
@@ -26,7 +27,6 @@ use ngs\exceptions\NotFoundException;
 
 class NgsRestRoutes extends NgsRoutes
 {
-
     private $httpMethod = "get";
 
 
@@ -62,5 +62,4 @@ class NgsRestRoutes extends NgsRoutes
     {
         $this->httpMethod = $httpMethod;
     }
-
 }

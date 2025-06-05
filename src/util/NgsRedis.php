@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Redis client util helper class
  *
@@ -12,7 +13,6 @@
 
 namespace ngs\util;
 
-
 use ngs\exceptions\DebugException;
 use Redis;
 use RedisCluster;
@@ -20,7 +20,6 @@ use RedisClusterException;
 
 class NgsRedis
 {
-
     private static ?NgsRedis $instance = null;
     private ?string $host = null;
     private ?int $port;
@@ -83,7 +82,6 @@ class NgsRedis
      */
     private function createRedisClusterConnection(): RedisCluster
     {
-        return new RedisCluster(NULL, [$this->host], 0.1, 0.1);
+        return new RedisCluster(null, [$this->host], 0.1, 0.1);
     }
-
 }

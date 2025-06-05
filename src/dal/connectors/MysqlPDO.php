@@ -1,4 +1,5 @@
 <?php
+
 /**
  * MysqlPDO class uses MySQL PHP PDO Extension to access DB.
  *
@@ -27,7 +28,6 @@ use PDOStatement;
 
 class MysqlPDO extends PDO
 {
-
     /**
      * Singleton instance of class
      */
@@ -47,7 +47,6 @@ class MysqlPDO extends PDO
         $this->setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
         $this->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $this->setAttribute(PDO::ATTR_STATEMENT_CLASS, [MysqlDBStatement::class]);
-
     }
 
     /**
@@ -84,6 +83,4 @@ class MysqlPDO extends PDO
             throw new DebugException($ex->getMessage(), $ex->getCode());
         }
     }
-
-
 }

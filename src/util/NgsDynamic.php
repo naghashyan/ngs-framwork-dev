@@ -48,12 +48,11 @@ class NgsDynamic extends \stdClass
             } else {
                 $this->$fieldName = $a;
             }
-        } else if ($type == 'get') {
+        } elseif ($type == 'get') {
             if (isset($this->$fieldName)) {
                 return $this->$fieldName;
             }
             return null;
         }
     }
-
 }

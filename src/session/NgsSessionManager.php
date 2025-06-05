@@ -1,4 +1,5 @@
 <?php
+
 /**
  * default ngs SessionManager class
  *
@@ -24,8 +25,7 @@ use ngs\request\AbstractAction;
 
 class NgsSessionManager extends \ngs\session\AbstractSessionManager
 {
-
-    private $requestSessionHeadersArr = array();
+    private $requestSessionHeadersArr = [];
 
 
     /**
@@ -43,7 +43,6 @@ class NgsSessionManager extends \ngs\session\AbstractSessionManager
         $sessionTimeout = $remember ? 2078842581 : null;
         $domain = false;
         if ($useDomain) {
-
             if ($useSubdomain) {
                 $domain = "." . $httpUtils->getHost();
             } else {
@@ -128,7 +127,7 @@ class NgsSessionManager extends \ngs\session\AbstractSessionManager
     {
         if (session_status() == PHP_SESSION_NONE) {
             session_start();
-            $_SESSION["ngs"] = array();
+            $_SESSION["ngs"] = [];
         }
         $_SESSION["ngs"][$key] = $value;
     }
@@ -176,5 +175,4 @@ class NgsSessionManager extends \ngs\session\AbstractSessionManager
     {
         return $this->requestSessionHeadersArr;
     }
-
 }

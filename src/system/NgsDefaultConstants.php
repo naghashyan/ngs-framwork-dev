@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Base ngs class
  * for static function that will
@@ -24,40 +25,38 @@
  | DEFINING VARIABLES IF SCRIPT RUNNING FROM COMMAND LINE
  |--------------------------------------------------------------------------
  */
-if (php_sapi_name() == 'cli' && NGS()->get('CMD_SCRIPT')){
-  $args = null;
-  if (isset($argv) && isset($argv[1])){
-    $args = substr($argv[1], strpos($argv[1], '?') + 1);
-    $uri = substr($argv[1], 0, strpos($argv[1], '?'));
-    $_SERVER['REQUEST_URI'] = $uri;
-  }
-
-  if ($args != null){
-    $queryArgsArr = explode('&', $args);
-    foreach ($queryArgsArr as $value){
-      $_arg = explode('=', $value);
-      if (isset($_REQUEST[$_arg[0]])){
-        if (is_array($_REQUEST[$_arg[0]])){
-          $tmp = $_REQUEST[$_arg[0]];
-
-        } else{
-          $tmp = [];
-          $tmp[] = $_REQUEST[$_arg[0]];
-        }
-        $tmp[] = $_arg[1];
-        $_REQUEST[$_arg[0]] = $tmp;
-
-      } else{
-        $_REQUEST[$_arg[0]] = $_arg[1];
-      }
+if (php_sapi_name() == 'cli' && NGS()->get('CMD_SCRIPT')) {
+    $args = null;
+    if (isset($argv) && isset($argv[1])) {
+        $args = substr($argv[1], strpos($argv[1], '?') + 1);
+        $uri = substr($argv[1], 0, strpos($argv[1], '?'));
+        $_SERVER['REQUEST_URI'] = $uri;
     }
-  }
 
-  if (isset($argv[2]) && !isset($_SERVER['ENVIRONMENT'])){
-    $_SERVER['ENVIRONMENT'] = $argv[2];
-  }
+    if ($args != null) {
+        $queryArgsArr = explode('&', $args);
+        foreach ($queryArgsArr as $value) {
+            $_arg = explode('=', $value);
+            if (isset($_REQUEST[$_arg[0]])) {
+                if (is_array($_REQUEST[$_arg[0]])) {
+                    $tmp = $_REQUEST[$_arg[0]];
+                } else {
+                    $tmp = [];
+                    $tmp[] = $_REQUEST[$_arg[0]];
+                }
+                $tmp[] = $_arg[1];
+                $_REQUEST[$_arg[0]] = $tmp;
+            } else {
+                $_REQUEST[$_arg[0]] = $_arg[1];
+            }
+        }
+    }
 
-  $_SERVER['HTTP_HOST'] = '';
+    if (isset($argv[2]) && !isset($_SERVER['ENVIRONMENT'])) {
+        $_SERVER['ENVIRONMENT'] = $argv[2];
+    }
+
+    $_SERVER['HTTP_HOST'] = '';
 }
 
 /*
@@ -81,12 +80,12 @@ NGS()->define('IM_TOKEN_COOKIE_KEY', '_im_token');
 */
 
 $environment = 'production';
-if (isset($_SERVER['ENVIRONMENT'])){
-  if ($_SERVER['ENVIRONMENT'] == 'development' || $_SERVER['ENVIRONMENT'] == 'dev'){
-    $environment = 'development';
-  } else if ($_SERVER['ENVIRONMENT'] == 'staging'){
-    $environment = 'staging';
-  }
+if (isset($_SERVER['ENVIRONMENT'])) {
+    if ($_SERVER['ENVIRONMENT'] == 'development' || $_SERVER['ENVIRONMENT'] == 'dev') {
+        $environment = 'development';
+    } elseif ($_SERVER['ENVIRONMENT'] == 'staging') {
+        $environment = 'staging';
+    }
 }
 NGS()->define('ENVIRONMENT', $environment);
 
@@ -100,14 +99,14 @@ NGS()->define('SEND_HTTP_PUSH', true);
 |--------------------------------------------------------------------------
 */
 //---defining document root
-if (strpos(getcwd(), '/htdocs') == false && strpos(getcwd(), '\htdocs') == false){
-  throw new Exception('please change document root to htdocs');
+if (strpos(getcwd(), '/htdocs') == false && strpos(getcwd(), '\htdocs') == false) {
+    throw new Exception('please change document root to htdocs');
 }
 //---defining ngs root
-if (strpos(getcwd(), '/htdocs') !== false){
-  $ngsRoot = substr(getcwd(), 0, strrpos(getcwd(), '/htdocs'));
-} else{
-  $ngsRoot = substr(getcwd(), 0, strrpos(getcwd(), '\htdocs'));
+if (strpos(getcwd(), '/htdocs') !== false) {
+    $ngsRoot = substr(getcwd(), 0, strrpos(getcwd(), '/htdocs'));
+} else {
+    $ngsRoot = substr(getcwd(), 0, strrpos(getcwd(), '\htdocs'));
 }
 NGS()->define('NGS_ROOT', $ngsRoot);
 
@@ -206,7 +205,7 @@ NGS()->define('NGS_EXCEPTION_NOT_FOUND', 'ngs\exceptions\NotFoundException');
 |--------------------------------------------------------------------------
 */
 //---defining if modules enabled
-NGS()->define('MODULES_ENABLE', TRUE);
+NGS()->define('MODULES_ENABLE', true);
 //---defining modules dir
 NGS()->define('MODULES_DIR', 'modules');
 //---defining modules routing file
@@ -226,7 +225,7 @@ NGS()->define('LESS_ENGINE', 'lib/less.php/Less.php');
 | DEFINING SMARTY DIRS
 |--------------------------------------------------------------------------
 */
-NGS()->define('USE_SMARTY', TRUE);
+NGS()->define('USE_SMARTY', true);
 //---defining smarty paths
 NGS()->define('SMARTY_CACHE_DIR', 'cache');
 NGS()->define('SMARTY_COMPILE_DIR', 'compile');

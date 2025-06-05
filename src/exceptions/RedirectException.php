@@ -1,4 +1,5 @@
 <?php
+
 /**
  *
  * @author Levon Naghashyan <levon@naghashyan.com>
@@ -20,7 +21,6 @@ namespace ngs\exceptions;
 
 class RedirectException extends \Exception
 {
-
     private $redirectTo;
 
     /**
@@ -41,5 +41,4 @@ class RedirectException extends \Exception
     {
         return $this->redirectTo;
     }
-
 }

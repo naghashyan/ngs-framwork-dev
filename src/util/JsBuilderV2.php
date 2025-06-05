@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Helper class for getting js files
  * have 3 general options connected with site mode (production/development)
@@ -47,7 +48,7 @@ class JsBuilderV2 extends AbstractBuilder
         $jsFile = substr($file, stripos($file, NGS()->get('JS_DIR')) + strlen(NGS()->get('JS_DIR')) + 1);
         $realFile = realpath(realpath(NGS()->getModuleDirByNS($module) . '/' . NGS()->get('JS_DIR')) . '/' . $jsFile);
         if (file_exists($realFile)) {
-            $fileUtils->sendFile($realFile, array('mimeType' => $this->getContentType(), 'cache' => false));
+            $fileUtils->sendFile($realFile, ['mimeType' => $this->getContentType(), 'cache' => false]);
             return;
         }
         $matches = explode('/', $jsFile);
@@ -61,7 +62,7 @@ class JsBuilderV2 extends AbstractBuilder
         if ($realFile === false) {
             throw new DebugException($jsFile . " File not found");
         }
-        $fileUtils->sendFile($realFile, array('mimeType' => $this->getContentType(), 'cache' => false));
+        $fileUtils->sendFile($realFile, ['mimeType' => $this->getContentType(), 'cache' => false]);
     }
 
     /**
@@ -109,5 +110,4 @@ class JsBuilderV2 extends AbstractBuilder
     {
         return 'text/javascript';
     }
-
 }

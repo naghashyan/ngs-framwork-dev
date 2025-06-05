@@ -1,4 +1,5 @@
 <?php
+
 /**
  * AbstractEventSubscriber class
  *
@@ -13,7 +14,6 @@
 
 namespace ngs\event\subscriber;
 
-
 abstract class AbstractEventSubscriber
 {
     public function __construct()
@@ -27,5 +27,5 @@ abstract class AbstractEventSubscriber
      *
      * @return array
      */
-    abstract public function getSubscriptions() :array;
+    abstract public function getSubscriptions(): array;
 }

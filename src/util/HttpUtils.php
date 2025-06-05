@@ -46,7 +46,7 @@ class HttpUtils
 
     public function getHost($main = false)
     {
-        $httpHost = $this->_getHttpHost($main);
+        $httpHost = $this->getHttpHostInternal($main);
         if ($httpHost === null) {
             return null;
         }
@@ -56,7 +56,7 @@ class HttpUtils
 
     public function getHttpHost($withPath = false, $withProtacol = false, $main = false)
     {
-        $httpHost = $this->_getHttpHost($main);
+        $httpHost = $this->getHttpHostInternal($main);
         if ($httpHost == null) {
             return null;
         }
@@ -78,7 +78,6 @@ class HttpUtils
                 return $httpHost;
             }
             if ($moduleRoutesEngine->isDefaultModule()) {
-
             }
 
             return $httpHost . "/" . $moduleRoutesEngine->getModuleUri();
@@ -138,7 +137,7 @@ class HttpUtils
 
     public function getMainDomain()
     {
-        $pieces = $this->_getHttpHost(true) ? parse_url($this->_getHttpHost(true)) : '';
+        $pieces = $this->getHttpHostInternal(true) ? parse_url($this->getHttpHostInternal(true)) : '';
         $domain = isset($pieces['path']) ? $pieces['path'] : '';
         if (preg_match('/(?P<domain>[a-z0-9][a-z0-9\-]{1,63}\.[a-z\.]{2,6})$/i', $domain, $regs)) {
             return $regs['domain'];
@@ -149,12 +148,12 @@ class HttpUtils
 
     public function getHostPath()
     {
-        $pieces = parse_url($this->_getHttpHost(true));
+        $pieces = parse_url($this->getHttpHostInternal(true));
 
         return $pieces['path'];
     }
 
-    public function _getHttpHost($main = false)
+    private function getHttpHostInternal($main = false)
     {
         $ngsHost = null;
         if (NGS()->get("HTTP_HOST")) {
@@ -167,7 +166,7 @@ class HttpUtils
 
     public function getSubdomain()
     {
-        $domain = $this->_getHttpHost(true);
+        $domain = $this->getHttpHostInternal(true);
         if (!$domain) {
             return null;
         }
@@ -181,5 +180,4 @@ class HttpUtils
         }
         return null;
     }
-
 }

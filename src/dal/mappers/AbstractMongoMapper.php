@@ -1,4 +1,5 @@
 <?php
+
 /**
  * AbstractMapper class is a base class for all mapper lasses.
  * It contains the basic functionality and also DBMS pointer.
@@ -18,14 +19,13 @@ use ngs\exceptions\DebugException;
 
 abstract class AbstractMongoMapper extends AbstractMapper
 {
-
     public $dbms;
     private $bulkUpdateQuery;
 
     /**
      * Initializes DBMS pointer.
      */
-    function __construct()
+    public function __construct()
     {
         try {
             if (isset(NGS()->getConfig()['DB'])) {
@@ -52,8 +52,10 @@ abstract class AbstractMongoMapper extends AbstractMapper
     public function insertValues($fieldsArray, $valuesArr)
     {
         //validating input params
-        if ($fieldsArray == null || $valuesArr == null || !is_array($fieldsArray) || !is_array($valuesArr) ||
-                count($fieldsArray) == 0 || count($fieldsArray) != count($valuesArr)) {
+        if (
+            $fieldsArray == null || $valuesArr == null || !is_array($fieldsArray) || !is_array($valuesArr) ||
+                count($fieldsArray) == 0 || count($fieldsArray) != count($valuesArr)
+        ) {
             throw new DebugException("The input params don't meet criterias.", ErrorCodes::$DB_INVALID_PARAM);
         }
 
@@ -69,7 +71,6 @@ abstract class AbstractMongoMapper extends AbstractMapper
                 $params[$fieldsArray[$i]] = $valuesArr[$i];
                 $sqlQuery .= sprintf(" `%s` = :%s,", $fieldsArray[$i], $fieldsArray[$i]);
             }
-
         }
         $sqlQuery = substr($sqlQuery, 0, -1);
         // Execute query.
@@ -116,7 +117,6 @@ abstract class AbstractMongoMapper extends AbstractMapper
         } catch (\Exception $e) {
             throw new DebugException($e->getMessage(), "Mongo DB");
         }
-
     }
 
     /**
@@ -368,5 +368,4 @@ abstract class AbstractMongoMapper extends AbstractMapper
         }
         return sprintf(" LIMIT %d, %d", $offset, $limit);
     }
-
 }

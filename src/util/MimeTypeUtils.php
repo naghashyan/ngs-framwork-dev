@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Hellper class for getting predefined mime-types
  *
@@ -20,7 +21,6 @@ namespace ngs\util;
 
 class MimeTypeUtils
 {
-
     private static $mime_types = [
         '.3dm' => 'x-world/x-3dmf',
         '.3dmf' => 'x-world/x-3dmf',
@@ -487,5 +487,4 @@ class MimeTypeUtils
         }
         return $mimeType;
     }
-
 }

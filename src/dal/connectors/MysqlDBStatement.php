@@ -1,4 +1,5 @@
 <?php
+
 /**
  * MysqlDBStatement
  *
@@ -24,7 +25,7 @@ use ngs\exceptions\DebugException;
 
 class MysqlDBStatement extends \PDOStatement
 {
-    public function execute(array|null $boundInputParams = NULL): bool
+    public function execute(array|null $boundInputParams = null): bool
     {
         try {
             return parent::execute($boundInputParams);
@@ -32,5 +33,4 @@ class MysqlDBStatement extends \PDOStatement
             throw new DebugException($ex->getMessage(), $ex->getCode());
         }
     }
-
 }

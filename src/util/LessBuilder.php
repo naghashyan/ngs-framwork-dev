@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Helper class for getting js files
  * have 3 general options connected with site mode (production/development)
@@ -27,7 +28,6 @@ use ngs\exceptions\DebugException;
 
 class LessBuilder extends AbstractBuilder
 {
-
     private \Less_Parser $lessParser;
 
     public function streamFile(string $module, string $file): void
@@ -37,7 +37,7 @@ class LessBuilder extends AbstractBuilder
             if (!$filePath) {
                 $this->build($file, true);
             }
-            NGS()->createDefinedInstance('FILE_UTILS', \ngs\util\FileUtils::class)->sendFile($filePath, array('mimeType' => $this->getContentType(), 'cache' => true));
+            NGS()->createDefinedInstance('FILE_UTILS', \ngs\util\FileUtils::class)->sendFile($filePath, ['mimeType' => $this->getContentType(), 'cache' => true]);
             return;
         }
         $this->build($file, false);
@@ -49,7 +49,7 @@ class LessBuilder extends AbstractBuilder
         if (count($files) === 0) {
             throw new DebugException('Please add less files in builder');
         }
-        $options = array();
+        $options = [];
         if ($mode) {
             $options['compress'] = true;
         }
@@ -62,7 +62,7 @@ class LessBuilder extends AbstractBuilder
         $moduleRoutesEngineForParser = NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', \ngs\routes\NgsModuleRoutes::class);
         $ngsModulePathForParser = '';
         if ($moduleRoutesEngineForParser->isDefaultModule()) {
-            $ngsModulePathForParser = $httpUtilsForParser->getHttpHost(true, false); 
+            $ngsModulePathForParser = $httpUtilsForParser->getHttpHost(true, false);
         } else {
             $currentModuleNsForParser = $moduleRoutesEngineForParser->getModuleNS();
             $ngsModulePathForParser = $httpUtilsForParser->getHttpHost(true, false) . '/' . $currentModuleNsForParser;
@@ -82,13 +82,12 @@ class LessBuilder extends AbstractBuilder
         header('Content-type: ' . $this->getContentType());
         echo $this->lessParser->getCss();
         exit;
-
     }
 
     private function setLessFiles($files): bool
     {
-        $importDirs = array();
-        $lessFiles = array();
+        $importDirs = [];
+        $lessFiles = [];
         foreach ($files['files'] as $value) {
             $modulePath = '';
             $module = '';
@@ -143,5 +142,4 @@ class LessBuilder extends AbstractBuilder
     {
         return 'text/css';
     }
-
 }

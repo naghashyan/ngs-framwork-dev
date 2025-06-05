@@ -1,4 +1,5 @@
 <?php
+
 /**
  *
  * @author Levon Naghashyan <levon@naghashyan.com>
@@ -20,7 +21,6 @@ namespace ngs\exceptions;
 
 class ClientException extends \Exception
 {
-
     private $errorParams;
 
     /**
@@ -31,14 +31,14 @@ class ClientException extends \Exception
      */
     public function __construct()
     {
-        $errorParams = array();
+        $errorParams = [];
         $argv = func_get_args();
         switch (func_num_args()) {
-            default :
-            case 1 :
+            default:
+            case 1:
                 self::__construct1($argv[0]);
                 break;
-            case 3 :
+            case 3:
                 self::__construct2($argv[0], $argv[1], $argv[2]);
                 break;
         }
@@ -59,7 +59,7 @@ class ClientException extends \Exception
 
     public function addErrorParam($id, $code, $message)
     {
-        $this->errorParams[$id] = array("code" => $code, "message" => $message);
+        $this->errorParams[$id] = ["code" => $code, "message" => $message];
     }
 
     public function getErrorParams()

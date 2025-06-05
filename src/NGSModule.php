@@ -1,11 +1,12 @@
 <?php
 
+namespace ngs;
+
 use Composer\Factory;
 use Composer\Package\RootPackageInterface;
 use ngs\event\EventManager;
 use ngs\event\structure\AbstractEventStructure;
 use ngs\event\subscriber\AbstractEventSubscriber;
-
 
 class NGSModule
 {
@@ -42,11 +43,10 @@ class NGSModule
 
             if (is_array($constants)) {
                 foreach ($constants as $key => $value) {
-//                    if (!defined($key)) {
-//                        define($key, $value);
-//                    }
+                    //                    if (!defined($key)) {
+                    //                        define($key, $value);
+                    //                    }
                     $this->constants[$key] = $value;
-
                 }
             }
         }
@@ -61,15 +61,13 @@ class NGSModule
 
             if (is_array($configs)) {
                 foreach ($configs as $key => $config) {
-//                    if (!defined($key)) {
-//                        define($key, $config);
-//                    }
+                    //                    if (!defined($key)) {
+                    //                        define($key, $config);
+                    //                    }
                     $this->config[$key] = $config;
-
                 }
             }
         }
-
     }
 
     /**
@@ -117,7 +115,6 @@ class NGSModule
         $extraData = $rootPackage->getExtra();
 
         $this->parentDir = $extraData['ngs'][$this->getName()]['parent'] ?? null;
-
     }
 
     public function getName()
@@ -195,7 +192,7 @@ class NGSModule
 
             /** @var AbstractEventSubscriber $subscriberObject */
 
-            $subscriberObject = new $subscriber;
+            $subscriberObject = new $subscriber();
 
             if (!$subscriberObject instanceof AbstractEventSubscriber) {
                 throw new \Exception('wrong subscriber ' . $subscriber);
@@ -214,7 +211,6 @@ class NGSModule
                 $availableParams = $eventStructExample->getAvailableVariables();
 
                 if ($eventStructExample->isVisible() && !isset($this->events[$eventStructExample->getEventId()])) {
-
                     $this->events[$eventStructExample->getEventId()] = [
                         'name' => $eventStructExample->getEventName(),
                         'bulk_is_available' => $eventStructExample->bulkIsAvailable(),
@@ -226,5 +222,3 @@ class NGSModule
         }
     }
 }
-
-?>

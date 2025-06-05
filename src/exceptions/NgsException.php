@@ -4,8 +4,8 @@ namespace ngs\exceptions;
 
 use Throwable;
 
-class NgsException  extends \Exception {
-
+class NgsException extends \Exception
+{
     public function __construct($message = "", $code = 0, Throwable $previous = null)
     {
         parent::__construct($message, $code, $previous);

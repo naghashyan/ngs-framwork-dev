@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Helper Abstract class for standart ngs builders
  * have 3 general options connected with site mode (production/development)
@@ -27,7 +28,6 @@ use ngs\exceptions\DebugException;
 
 abstract class AbstractBuilder
 {
-
     private $builderJsonArr = [];
 
     /**
@@ -47,7 +47,7 @@ abstract class AbstractBuilder
             } elseif (file_exists($filePath) === false) {
                 $this->build($file);
             }
-            $fileUtils->sendFile($filePath, array('mimeType' => $this->getContentType(), 'cache' => true));
+            $fileUtils->sendFile($filePath, ['mimeType' => $this->getContentType(), 'cache' => true]);
             return;
         }
         if (strpos($file, 'devout') !== false) {
@@ -65,7 +65,7 @@ abstract class AbstractBuilder
         }
         $realFile = realpath((NGS()->getModuleDirByNS($module) . '/' . NGS()->get('PUBLIC_DIR')) . '/' . $file);
         if (file_exists($realFile)) {
-            $fileUtils->sendFile($realFile, array('mimeType' => $this->getContentType(), 'cache' => false));
+            $fileUtils->sendFile($realFile, ['mimeType' => $this->getContentType(), 'cache' => false]);
             return;
         }
 
@@ -88,7 +88,7 @@ abstract class AbstractBuilder
     protected function getBuilderArr($builders, $file = null)
     {
         $moduleRoutesEngine = NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', \ngs\routes\NgsModuleRoutes::class);
-        $tmpArr = array();
+        $tmpArr = [];
         foreach ($builders as $key => $value) {
             if (strpos($file, $value->output_file) === false) {
                 $builders = null;
@@ -103,7 +103,7 @@ abstract class AbstractBuilder
                 } else {
                     continue;
                 }
-                $tmpArr = array();
+                $tmpArr = [];
                 $tmpArr['output_file'] = (string)$value->output_file;
                 $tmpArr['debug'] = false;
                 if (isset($value->compress)) {
@@ -114,7 +114,7 @@ abstract class AbstractBuilder
                 }
                 $tmpArr['files'] = (array)$value->files;
             } else {
-                $tmpArr = array();
+                $tmpArr = [];
                 $tmpArr['output_file'] = (string)$value->output_file;
                 $tmpArr['debug'] = false;
                 if (isset($value->compress)) {
@@ -123,11 +123,11 @@ abstract class AbstractBuilder
                 if (isset($value->type)) {
                     $tmpArr['type'] = $value->type;
                 }
-                $tmpArr['files'] = array();
+                $tmpArr['files'] = [];
                 if (isset($value->builders) && is_array($value->builders)) {
                     foreach ($value->builders as $builder) {
                         if (!is_array($builder)) {
-                            $builder = array($builder);
+                            $builder = [$builder];
                         }
                         $tempArr = $this->getBuilderArr($builder, $builder[0]->output_file);
                         if (isset($tempArr['files'])) {
@@ -146,10 +146,10 @@ abstract class AbstractBuilder
                     if (isset($value->type)) {
                         $type = $value->type;
                     }
-                    $tmpFileArr = array();
+                    $tmpFileArr = [];
                     if (isset($value->files)) {
                         foreach ((array)$value->files as $file) {
-                            $_tmpArr = array();
+                            $_tmpArr = [];
                             $_tmpArr['module'] = $module;
                             $_tmpArr['file'] = $file;
                             $_tmpArr['type'] = $type;
@@ -160,7 +160,6 @@ abstract class AbstractBuilder
                     if (isset($value->dir)) {
                         $dir = $value->dir;
                         if (!isset($dir->path)) {
-
                             new DebugException('please provide directory path');
                         }
                         if (!isset($dir->ext)) {
@@ -344,5 +343,4 @@ abstract class AbstractBuilder
 
         return $realPath;
     }
-
 }

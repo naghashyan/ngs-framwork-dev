@@ -1,5 +1,7 @@
 <?php
 
+namespace ngs;
+
 /**
  * Base NGSDeprecated class
  * for static function that will
@@ -31,11 +33,10 @@ require_once('util/HttpUtils.php');
 
 abstract class NGSDeprecated
 {
-
     protected $ngsConfig = null;
-    protected $config = array();
+    protected $config = [];
 
-//----------------------------------------------------------------
+    //----------------------------------------------------------------
     protected $dispatcher = null;
     protected $loadMapper = null;
     protected $routesEngine = null;
@@ -124,7 +125,7 @@ abstract class NGSDeprecated
      */
     abstract public function getConfig(?string $prefix = null): mixed;
 
-//------------------
+    //------------------
 
     /**
      * @return string|null
@@ -156,7 +157,7 @@ abstract class NGSDeprecated
     }
 
 
-//----------------------------------------------------------------
+    //----------------------------------------------------------------
 
 
     /**
@@ -583,7 +584,8 @@ abstract class NGSDeprecated
      */
     public function getFileUtils(): \ngs\util\FileUtils
     {
-        return $this->createDefinedInstance('fileUtils', \ngs\util\FileUtils::class);;
+        return $this->createDefinedInstance('fileUtils', \ngs\util\FileUtils::class);
+        ;
     }
 
     /**
@@ -678,15 +680,15 @@ abstract class NGSDeprecated
     public function getFileStreamerByType($fileType)
     {
         switch ($fileType) {
-            case 'js' :
+            case 'js':
                 return $this->getJsBuilder();
-            case 'css' :
+            case 'css':
                 return $this->getCssBuilder();
-            case 'less' :
+            case 'less':
                 return $this->getLessBuilder();
-            case 'sass' :
+            case 'sass':
                 return $this->getSassBuilder();
-            default :
+            default:
                 return $this->getFileUtils();
         }
     }

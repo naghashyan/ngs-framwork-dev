@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Helper wrapper class for php curl
  *
@@ -25,7 +26,6 @@ use Exception;
 
 class NgsArgs
 {
-
     /**
      * @var NgsArgs[] $instance
      */
@@ -37,7 +37,6 @@ class NgsArgs
 
     private function __construct()
     {
-
     }
 
     /**
@@ -67,7 +66,8 @@ class NgsArgs
      * @param string $name
      * @return mixed|null
      */
-    public function get(string $name) {
+    public function get(string $name)
+    {
         $args = $this->getArgs();
         return $args[$name] ?? null;
     }
@@ -152,7 +152,7 @@ class NgsArgs
             } else {
                 $this->$fieldName = $a;
             }
-        } else if ($type === 'get') {
+        } elseif ($type === 'get') {
             return $this->$fieldName;
         }
         return null;
@@ -212,11 +212,9 @@ class NgsArgs
                     $this->setArgs($parsedRequestBody);
                 }
             }
-
         } catch (Exception $exp) {
             return;
         }
-
     }
 
     /**
@@ -236,7 +234,6 @@ class NgsArgs
         } catch (Exception $exp) {
             return new NgsArgs();
         }
-
     }
 
     /**
@@ -248,7 +245,6 @@ class NgsArgs
             $this->inputParams = file_get_contents('php://input');
         }
         return $this->inputParams;
-
     }
 
     /**
@@ -269,7 +265,7 @@ class NgsArgs
     private function getAllHeaders(): array
     {
         if (!is_array($_SERVER)) {
-            return array();
+            return [];
         }
         $headers = [];
         foreach ($_SERVER as $key => $value) {
@@ -279,8 +275,5 @@ class NgsArgs
             $headers[$key] = $value;
         }
         return $headers;
-
     }
 }
-
-

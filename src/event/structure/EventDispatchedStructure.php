@@ -1,4 +1,5 @@
 <?php
+
 /**
  * EventDispatchedStructure class, can call when event dispatched
  *
@@ -23,7 +24,8 @@ class EventDispatchedStructure extends AbstractEventStructure
         $this->event = $event;
     }
 
-    public static function getEmptyInstance() :AbstractEventStructure {
+    public static function getEmptyInstance(): AbstractEventStructure
+    {
         return new EventDispatchedStructure([], null);
     }
 

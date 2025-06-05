@@ -1,4 +1,5 @@
 <?php
+
 /**
  * default ngs routing class
  * this class by default used from dispacher
@@ -26,7 +27,6 @@ use ngs\exceptions\NotFoundException;
 
 class NgsRoutes
 {
-
     protected ?array $routes = null;
     private ?string $package = null;
     private $nestedRoutes = null;
@@ -34,8 +34,8 @@ class NgsRoutes
     private string $dynContainer = 'dyn';
     private $currentRoute = null;
 
-    function __construct($routesFile=""){
-
+    public function __construct($routesFile = "")
+    {
     }
 
 
@@ -190,11 +190,11 @@ class NgsRoutes
 
         foreach ($pathArr as $i => $v) {
             switch ($v) {
-                case NGS()->getActionPackage() :
+                case NGS()->getActionPackage():
                     $actionType = 'action';
                     $classPrefix = 'Action';
                     break;
-                case NGS()->getLoadsPackage() :
+                case NGS()->getLoadsPackage():
                     $actionType = 'load';
                     $classPrefix = 'Load';
                     break;
@@ -207,8 +207,8 @@ class NgsRoutes
             $action = str_replace('do_', '', $action);
         }
         $action = preg_replace_callback('/_(\w)/', function ($m) {
-                return strtoupper($m[1]);
-            }, ucfirst($action)) . $classPrefix;
+            return strtoupper($m[1]);
+        }, ucfirst($action)) . $classPrefix;
         return ['action' => $module . '\\' . implode('\\', $pathArr) . '\\' . $action, 'type' => $actionType];
     }
 
@@ -260,7 +260,7 @@ class NgsRoutes
         }
         $action .= $command;
         $this->setContentLoad($action);
-        return array('action' => $action, 'args' => $urlPartsArr, 'matched' => true);
+        return ['action' => $action, 'args' => $urlPartsArr, 'matched' => true];
     }
 
     /**
@@ -292,7 +292,7 @@ class NgsRoutes
 
         if ($package === '404') {
             $matchedRoutesArr[] = $routes['default'][$package];
-        } else if ($package === 'default') {
+        } elseif ($package === 'default') {
             $matchedRoutesArr[][$package] = $routes[$package];
         } else {
             $matchedRoutesArr = $routes[$package];
@@ -302,7 +302,6 @@ class NgsRoutes
         $args = null;
         $foundRoute = [];
         foreach ($matchedRoutesArr as $route) {
-
             $foundRoute = [];
             if (isset($route['default'])) {
                 if ($route['default'] === 'dyn') {
@@ -359,7 +358,7 @@ class NgsRoutes
         if (NGS()->getModulesRoutesEngine()->checkModulByNS($actionType)) {
             $actionNS = $actionType;
             $foundRoute['action'] = substr($foundRoute['action'], strpos($foundRoute['action'], '.') + 1);
-        } else if (isset($foundRoute['namespace'])) {
+        } elseif (isset($foundRoute['namespace'])) {
             $actionNS = $foundRoute['namespace'];
         } else {
             $actionNS = NGS()->getModulesRoutesEngine()->getModuleNS();
@@ -369,12 +368,12 @@ class NgsRoutes
         $this->setContentLoad($_action);
 
         if (isset($foundRoute['nestedLoad'])) {
-            $isDomainDefault=!array_key_exists("defaultDomain", $foundRoute) || $foundRoute['defaultDomain'];
-            $this->setNestedRoutes($foundRoute['nestedLoad'], $foundRoute['action'],$isDomainDefault);
+            $isDomainDefault = !array_key_exists("defaultDomain", $foundRoute) || $foundRoute['defaultDomain'];
+            $this->setNestedRoutes($foundRoute['nestedLoad'], $foundRoute['action'], $isDomainDefault);
         }
         $this->setCurrentRoute($foundRoute);
         if (!isset($foundRoute['args'])) {
-            $foundRoute['args'] = array();
+            $foundRoute['args'] = [];
         }
 
         return $this->getMatchedRouteData($_action, $foundRoute);
@@ -424,7 +423,6 @@ class NgsRoutes
         $routeUrlExp = $routeArr['route'];
         $originalUrl = '/' . implode('/', $uriParams);
         foreach ((array)$routeArr['constraints'] as $item => $constraint) {
-
             if (strpos($routeUrlExp, ':' . $item) === false) {
                 throw new \ngs\exceptions\DebugException('constraints and routs params note matched, please check in ' . NGS()->get('NGS_ROUTS') . 'in this rout section ' . $route);
             }
@@ -453,7 +451,7 @@ class NgsRoutes
 
     public function getStaticFileRoute($matches, $urlMatches, $fileUrl)
     {
-        $loadsArr = array();
+        $loadsArr = [];
         $loadsArr['type'] = 'file';
         $loadsArr['file_type'] = pathinfo(end($matches), PATHINFO_EXTENSION);
         $filePices = $urlMatches;
@@ -468,7 +466,6 @@ class NgsRoutes
         $filePeaceIndex = 0;
         if (!NGS()->getModulesRoutesEngine()->isDefaultModule() && NGS()->getModulesRoutesEngine()->getModuleType() != 'path') {
             $filePeaceIndex = 1;
-
         }
         if (isset($filePices[$filePeaceIndex]) && $filePices[$filePeaceIndex] == 'less') {
             $loadsArr['file_type'] = 'less';
@@ -494,12 +491,12 @@ class NgsRoutes
      * @return void
      */
 
-    private function setNestedRoutes(array $nestedLoads, string $package,? bool $isDomainDefault=true): void
+    private function setNestedRoutes(array $nestedLoads, string $package, ?bool $isDomainDefault = true): void
     {
         foreach ($nestedLoads as $key => $value) {
             if (!$isDomainDefault) {
-                $actionNS ="" ;
-            }else if (isset($value['namespace'])) {
+                $actionNS = "" ;
+            } elseif (isset($value['namespace'])) {
                 $actionNS = $value['namespace'];
             } else {
                 $actionNS = NGS()->getModulesRoutesEngine()->getModuleNS();
@@ -555,5 +552,4 @@ class NgsRoutes
         }
         return 'get';
     }
-
 }

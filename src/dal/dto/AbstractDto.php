@@ -1,4 +1,5 @@
 <?php
+
 /**
  *
  * AbstractDto parent class for all
@@ -21,12 +22,10 @@
 
 namespace ngs\dal\dto;
 
-
 use ngs\util\AnnotationParser;
 
 abstract class AbstractDto
 {
-
     private $ngs_nullableFields = [];
     private $ngs_mapArray = [];
 
@@ -94,7 +93,7 @@ abstract class AbstractDto
         }, self::lowerFirstLetter(substr($m, 3)));
         if ($type === 'set') {
             $this->$fieldName = $a[0];
-        } else if ($type === 'get') {
+        } elseif ($type === 'get') {
             if (isset($this->$fieldName)) {
                 return $this->$fieldName;
             }
@@ -105,10 +104,10 @@ abstract class AbstractDto
     public function __set($property, $value)
     {
         $fieldName = 'set' . preg_replace_callback('/_([a-z])/', function ($property) {
-                if (isset($property[1])) {
-                    return ucfirst($property[1]);
-                }
-            }, self::upperFirstLetter(($property)));
+            if (isset($property[1])) {
+                return ucfirst($property[1]);
+            }
+        }, self::upperFirstLetter(($property)));
 
         $this->$fieldName($value);
     }
@@ -158,11 +157,11 @@ abstract class AbstractDto
     {
         foreach ($dataArr as $key => $data) {
             $setterFunction = 'set' . preg_replace_callback('/_(\w)/', function ($m) {
-                    return strtoupper($m[1]);
-                }, ucfirst($key));
+                return strtoupper($m[1]);
+            }, ucfirst($key));
             $getterFunction = 'get' . preg_replace_callback('/_(\w)/', function ($m) {
-                    return strtoupper($m[1]);
-                }, ucfirst($key));
+                return strtoupper($m[1]);
+            }, ucfirst($key));
             if ($onlyNotSetFields && method_exists($this, $setterFunction) && $this->$getterFunction() !== null) {
                 continue;
             }
@@ -172,7 +171,6 @@ abstract class AbstractDto
                 } else {
                     $this->$setterFunction($data);
                 }
-
             }
         }
     }
@@ -196,12 +194,10 @@ abstract class AbstractDto
                 }
                 $getterFunction = 'get' . '' . ucfirst($property->getName());
                 if ($toAssoc) {
-
                     $resultArr[$property->getName()] = $this->$getterFunction();
                 } else {
                     $resultArr[] = $this->$getterFunction();
                 }
-
             }
         } catch (\ReflectionException $exception) {
             return [];
@@ -317,6 +313,4 @@ abstract class AbstractDto
         }
         return date('Y-m-d', $date);
     }
-
-
 }

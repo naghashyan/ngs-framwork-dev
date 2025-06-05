@@ -21,7 +21,6 @@ use ngs\event\subscriber\AbstractEventSubscriber;
 
 class EventManager
 {
-
     /**
      * @var EventManager instance of class
      */
@@ -29,8 +28,8 @@ class EventManager
 
     private array $eventSubscriptions = [];
 
-    private function __construct() {
-        
+    private function __construct()
+    {
     }
 
     /**
@@ -54,14 +53,15 @@ class EventManager
      * @param AbstractEventStructure $event
      * @param array $userIds
      */
-    public function dispatch(AbstractEventStructure $event) {
-        if(!$event instanceof EventDispatchedStructure) {
+    public function dispatch(AbstractEventStructure $event)
+    {
+        if (!$event instanceof EventDispatchedStructure) {
             $eventDispatched = new EventDispatchedStructure([], $event);
             $this->dispatch($eventDispatched);
         }
-        
+
         $handlers = isset($this->eventSubscriptions[get_class($event)]) ? $this->eventSubscriptions[get_class($event)] : [];
-        foreach($handlers as $handler) {
+        foreach ($handlers as $handler) {
             $subscriber = $handler['subscriber'];
             $method = $handler['method'];
             $subscriber->$method($event);
@@ -76,8 +76,9 @@ class EventManager
      * @param AbstractEventSubscriber $subscriber
      * @param string $method
      */
-    public function subscribeToEvent($eventName, AbstractEventSubscriber $subscriber, string $method) {
-        if(!isset($this->eventSubscriptions[$eventName])) {
+    public function subscribeToEvent($eventName, AbstractEventSubscriber $subscriber, string $method)
+    {
+        if (!isset($this->eventSubscriptions[$eventName])) {
             $this->eventSubscriptions[$eventName] = [];
         }
 

@@ -2,30 +2,30 @@
 
 namespace ngs\lib\minify;
 
-use \Exception as Minify_JS_ClosureCompiler_Exception;
+use Exception as Minify_JS_ClosureCompiler_Exception;
 
 class ClosureCompiler
 {
     /**
      * @var string The option key for the maximum POST byte size
      */
-    const OPTION_MAX_BYTES = 'maxBytes';
+    public const OPTION_MAX_BYTES = 'maxBytes';
     /**
      * @var string The option key for additional params. @see __construct
      */
-    const OPTION_ADDITIONAL_OPTIONS = 'additionalParams';
+    public const OPTION_ADDITIONAL_OPTIONS = 'additionalParams';
     /**
      * @var string The option key for the fallback Minifier
      */
-    const OPTION_FALLBACK_FUNCTION = 'fallbackFunc';
+    public const OPTION_FALLBACK_FUNCTION = 'fallbackFunc';
     /**
      * @var string The option key for the service URL
      */
-    const OPTION_COMPILER_URL = 'compilerUrl';
+    public const OPTION_COMPILER_URL = 'compilerUrl';
     /**
      * @var int The default maximum POST byte size according to https://developers.google.com/closure/compiler/docs/api-ref
      */
-    const DEFAULT_MAX_BYTES = 2000000;
+    public const DEFAULT_MAX_BYTES = 2000000;
 
     /**
      * @var string[] $DEFAULT_OPTIONS The default options to pass to the compiler service

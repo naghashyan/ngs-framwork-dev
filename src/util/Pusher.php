@@ -2,10 +2,8 @@
 
 namespace ngs\util;
 
-
 class Pusher
 {
-
     /**
      * Image
      * @const str
@@ -54,7 +52,7 @@ class Pusher
     public static function getInstance(): Pusher
     {
         if (self::$instance === null) {
-            self::$instance = new self;
+            self::$instance = new self();
         }
 
         return self::$instance;
@@ -112,15 +110,11 @@ class Pusher
         $line = [];
 
         if ($type === null && (bool)$this->links) {
-
             foreach ($this->links as $type => $urls) {
                 $line[] = $this->toHeader($type, $urls);
             }
-
         } elseif (isset($this->links[$type])) {
-
             $line[] = $this->toHeader($type, $this->links[$type]);
-
         } else {
             return null;
         }
@@ -152,8 +146,9 @@ class Pusher
      */
     public function toHeader(string $type, array $urls): ?string
     {
-        if ((bool)$urls === false)
+        if ((bool)$urls === false) {
             return null;
+        }
 
         $line = [];
         $opts = [
@@ -180,8 +175,9 @@ class Pusher
         $opts = [];
 
         foreach ($options as $k => $v) {
-            if ($v === false)
+            if ($v === false) {
                 continue;
+            }
 
             $opts[] = "{$k}={$v}";
         }

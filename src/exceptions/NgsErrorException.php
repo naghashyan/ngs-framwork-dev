@@ -1,4 +1,5 @@
 <?php
+
 /**
  * NgsErrorException exceptions class extends from Exception
  * handle ngs errors
@@ -22,7 +23,6 @@ namespace ngs\exceptions;
 
 class NgsErrorException extends \Exception
 {
-
     private $httpCode = 400;
     private $params = [];
 
@@ -63,5 +63,4 @@ class NgsErrorException extends \Exception
     {
         $this->params = $params;
     }
-
 }

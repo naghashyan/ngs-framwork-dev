@@ -1,4 +1,5 @@
 <?php
+
 /**
  *
  * @author Levon Naghashyan <levon@naghashyan.com>
@@ -32,7 +33,6 @@ use ngs\util\Pusher;
 
 class Dispatcher
 {
-
     private bool $isRedirect = false;
 
     /**
@@ -64,11 +64,11 @@ class Dispatcher
                 NgsArgs::getInstance()->setArgs($routesArr['args']);
             }
             switch ($routesArr['type']) {
-                case 'load' :
+                case 'load':
                     // $templateEngine initialized already
                     if (isset($_GET['ngsValidate']) && $_GET['ngsValidate'] === 'true') {
                         $this->validate($routesArr['action']);
-                    } else if (isset(NGS()->args()->args()['ngsValidate']) && NGS()->args()->args()['ngsValidate']) {
+                    } elseif (isset(NGS()->args()->args()['ngsValidate']) && NGS()->args()->args()['ngsValidate']) {
                         $this->validate($routesArr['action']);
                     } else {
                         $this->loadPage($routesArr['action']);
@@ -77,7 +77,8 @@ class Dispatcher
                 case 'api_load':
                     // $templateEngine initialized already
                     $this->loadApiPage($routesArr);
-                case 'action' :
+                    // no break
+                case 'action':
                     // $templateEngine initialized already
                     $this->doAction($routesArr['action']);
                     break;
@@ -85,7 +86,7 @@ class Dispatcher
                     // $templateEngine initialized already
                     $this->doApiAction($routesArr);
                     exit;
-                case 'file' :
+                case 'file':
                     $this->streamStaticFile($routesArr);
                     break;
             }
@@ -160,7 +161,7 @@ class Dispatcher
             if (class_exists($action) === false) {
                 throw new DebugException($action . ' Load Not found');
             }
-            $loadObj = new $action;
+            $loadObj = new $action();
             $loadObj->initialize();
             if (!$this->validateRequest($loadObj)) {
                 $loadObj->onNoAccess();
@@ -170,7 +171,8 @@ class Dispatcher
             $templateEngine = NGS()->createDefinedInstance('TEMPLATE_ENGINE', \ngs\templater\NgsTemplater::class);
             $templateEngine->setType($loadObj->getNgsLoadType());
             $templateEngine->setTemplate($loadObj->getTemplate());
-            $templateEngine->setPermalink(NGS()->createDefinedInstance('LOAD_MAPPER', \ngs\routes\NgsLoadMapper::class)->getNgsPermalink());
+            $loadMapper = NGS()->createDefinedInstance('LOAD_MAPPER', \ngs\routes\NgsLoadMapper::class);
+            $templateEngine->setPermalink($loadMapper->getNgsPermalink());
             if (NGS()->get('SEND_HTTP_PUSH')) {
                 Pusher::getInstance()->push();
             }
@@ -208,7 +210,7 @@ class Dispatcher
                 throw new DebugException($action . ' Load Not found');
             }
             /** @var NgsApiAction $loadObj */
-            $loadObj = new $action;
+            $loadObj = new $action();
             $loadObj->setAction($routesArr['action_method']);
             $loadObj->setRequestValidators($routesArr['request_params']);
             $loadObj->setResponseValidators($routesArr['response_params']);
@@ -225,7 +227,8 @@ class Dispatcher
             if (method_exists($loadObj, 'getTemplate')) {
                 $templateEngine->setTemplate($loadObj->getTemplate());
             }
-            $templateEngine->setPermalink(NGS()->createDefinedInstance('LOAD_MAPPER', \ngs\routes\NgsLoadMapper::class)->getNgsPermalink());
+            $loadMapper = NGS()->createDefinedInstance('LOAD_MAPPER', \ngs\routes\NgsLoadMapper::class);
+            $templateEngine->setPermalink($loadMapper->getNgsPermalink());
             if (NGS()->get('SEND_HTTP_PUSH')) {
                 Pusher::getInstance()->push();
             }
@@ -249,7 +252,6 @@ class Dispatcher
             }
             throw $ex;
         }
-
     }
 
     public function validate(string $action): void
@@ -258,7 +260,7 @@ class Dispatcher
             if (class_exists($action) === false) {
                 throw new DebugException($action . ' Load Not found');
             }
-            $loadObj = new $action;
+            $loadObj = new $action();
             $loadObj->initialize();
             if (!$this->validateRequest($loadObj)) {
                 $loadObj->onNoAccess();
@@ -306,7 +308,7 @@ class Dispatcher
             if (class_exists($action) === false) {
                 throw new DebugException($action . ' Action Not found');
             }
-            $actionObj = new $action;
+            $actionObj = new $action();
             $actionObj->initialize();
 
             if (!$this->validateRequest($actionObj)) {
@@ -349,7 +351,7 @@ class Dispatcher
             if (class_exists($action) === false) {
                 throw new DebugException($action . ' Action Not found');
             }
-            $actionObj = new $action;
+            $actionObj = new $action();
             $actionObj->setAction($routesArr['action_method']);
             $actionObj->setRequestValidators($routesArr['request_params']);
             $actionObj->setResponseValidators($routesArr['response_params']);
@@ -380,30 +382,30 @@ class Dispatcher
             }
             throw $ex;
         }
-
     }
 
     private function streamStaticFile($fileArr)
     {
-        $publicDirForModule = realpath(NGS()->getModuleDirByNS($fileArr['module']) . '/' . NGS()->get('PUBLIC_DIR'));
+        $moduleDir = NGS()->getModuleDirByNS($fileArr['module']);
+        $publicDirForModule = realpath($moduleDir . '/' . NGS()->get('PUBLIC_DIR'));
         $filePath = realpath($publicDirForModule . '/' . $fileArr['file_url']);
         if (file_exists($filePath)) {
             $stramer = NGS()->createDefinedInstance('FILE_UTILS', \ngs\util\FileUtils::class);
         } else {
             switch ($fileArr['file_type']) {
-                case 'js' :
+                case 'js':
                     $stramer = NGS()->createDefinedInstance('JS_BUILDER', \ngs\util\JsBuilderV2::class);
                     break;
-                case 'css' :
+                case 'css':
                     $stramer = NGS()->createDefinedInstance('CSS_BUILDER', \ngs\util\CssBuilder::class);
                     break;
-                case 'less' :
+                case 'less':
                     $stramer = NGS()->createDefinedInstance('LESS_BUILDER', \ngs\util\LessBuilder::class);
                     break;
-                case 'sass' :
+                case 'sass':
                     $stramer = NGS()->createDefinedInstance('SASS_BUILDER', \ngs\util\SassBuilder::class);
                     break;
-                default :
+                default:
                     $stramer = NGS()->createDefinedInstance('FILE_UTILS', \ngs\util\FileUtils::class);
                     break;
             }
@@ -459,29 +461,37 @@ class Dispatcher
      */
     public function getSubscribersAndSubscribeToEvents(bool $loadAll = false)
     {
-        $adminToolsSubscribers = realpath(NGS()->getModuleDirByNS(NGS()->get('NGS_CMS_NS')) . '/' . NGS()->get('CONF_DIR')) . '/event_subscribers.json';
+        $confDir = NGS()->get('CONF_DIR');
+        $ngsCmsNs = NGS()->get('NGS_CMS_NS');
+        $adminToolsSubscribersPath = NGS()->getModuleDirByNS($ngsCmsNs) . '/' . $confDir . '/event_subscribers.json';
+        $adminToolsSubscribers = realpath($adminToolsSubscribersPath);
+
         $subscribers = [];
-        if (file_exists($adminToolsSubscribers)) {
+        if ($adminToolsSubscribers && file_exists($adminToolsSubscribers)) {
             $subscribers = json_decode(file_get_contents($adminToolsSubscribers), true);
         }
 
         if ($loadAll) {
-            $moduleRouteDile = realpath(NGS()->get('NGS_ROOT') . '/' . NGS()->get('CONF_DIR') . '/' . NGS()->get('NGS_MODULS_ROUTS'));
-            if ($moduleRouteDile) {
-                $modulesData = json_decode(file_get_contents($moduleRouteDile), true);
+            $ngsRoot = NGS()->get('NGS_ROOT');
+            $ngsModulesRoutes = NGS()->get('NGS_MODULS_ROUTS');
+            $moduleRouteFile = realpath($ngsRoot . '/' . $confDir . '/' . $ngsModulesRoutes);
+            if ($moduleRouteFile) {
+                $modulesData = json_decode(file_get_contents($moduleRouteFile), true);
                 $modules = $this->getModules($modulesData);
                 foreach ($modules as $module) {
-                    $modulSubscribers = realpath(NGS()->getModuleDirByNS($module) . '/' . NGS()->get('CONF_DIR')) . '/event_subscribers.json';
-                    if (file_exists($modulSubscribers)) {
-                        $moduleSubscribers = json_decode(file_get_contents($modulSubscribers), true);
+                    $moduleSubscribersPath = NGS()->getModuleDirByNS($module) . '/' . $confDir . '/event_subscribers.json';
+                    $modulSubscribersFile = realpath($moduleSubscribersPath);
+                    if ($modulSubscribersFile && file_exists($modulSubscribersFile)) {
+                        $moduleSubscribers = json_decode(file_get_contents($modulSubscribersFile), true);
                         $subscribers = $this->mergeSubscribers($subscribers, $moduleSubscribers);
                     }
                 }
             }
         } else {
-            $modulSubscribers = NGS()->get('NGS_ROOT') . '/conf/event_subscribers.json';
-            if (file_exists($modulSubscribers)) {
-                $moduleSubscribers = json_decode(file_get_contents($modulSubscribers), true);
+            $moduleSubscribersPath = NGS()->get('NGS_ROOT') . '/' . $confDir . '/event_subscribers.json';
+            $modulSubscribersFile = realpath($moduleSubscribersPath);
+            if ($modulSubscribersFile && file_exists($modulSubscribersFile)) {
+                $moduleSubscribers = json_decode(file_get_contents($modulSubscribersFile), true);
                 $subscribers = $this->mergeSubscribers($subscribers, $moduleSubscribers);
             }
         }
@@ -505,12 +515,12 @@ class Dispatcher
 
         foreach ($modulesData['default'] as $type => $modules) {
             if ($type === 'default') {
-                if (!in_array($modules['dir'], $result)) {
+                if (!in_array($modules['dir'], $result, true)) {
                     $result[] = $modules['dir'];
                 }
             } else {
                 foreach ($modules as $info) {
-                    if (is_array($info) && !in_array($info['dir'], $result)) {
+                    if (is_array($info) && !in_array($info['dir'], $result, true)) {
                         $result[] = $info['dir'];
                     }
                 }
@@ -577,7 +587,7 @@ class Dispatcher
         $eventManager = EventManager::getInstance();
         foreach ($subscribers as $subscriber) {
             /** @var AbstractEventSubscriber $subscriberObject */
-            $subscriberObject = new $subscriber['class'];
+            $subscriberObject = new $subscriber['class']();
             if (!$subscriberObject instanceof AbstractEventSubscriber) {
                 throw new \Exception('wrong subscriber ' . $subscriber['class']);
             }
@@ -590,8 +600,9 @@ class Dispatcher
                 }
                 $eventStructExample = $eventStructClass::getEmptyInstance();
                 $availableParams = $eventStructExample->getAvailableVariables();
-                if ($eventStructExample->isVisible() && !isset($this->allVisibleEvents[$eventStructExample->getEventId()])) {
-                    $this->allVisibleEvents[$eventStructExample->getEventId()] = [
+                $eventId = $eventStructExample->getEventId();
+                if ($eventStructExample->isVisible() && !isset($this->allVisibleEvents[$eventId])) {
+                    $this->allVisibleEvents[$eventId] = [
                         'name' => $eventStructExample->getEventName(),
                         'bulk_is_available' => $eventStructExample->bulkIsAvailable(),
                         'params' => $availableParams
@@ -613,6 +624,4 @@ class Dispatcher
     {
         NGS()->createDefinedInstance('TEMPLATE_ENGINE', \ngs\templater\NgsTemplater::class)->display();
     }
-
-
 }

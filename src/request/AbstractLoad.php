@@ -1,4 +1,5 @@
 <?php
+
 /**
  * NGS abstract load all loads should extends from this class
  * this class extends from AbstractRequest class
@@ -27,9 +28,8 @@ use ngs\util\NgsArgs;
 
 abstract class AbstractLoad extends AbstractRequest
 {
-
-    protected array $parentParams = array();
-    private array $jsonParam = array();
+    protected array $parentParams = [];
+    private array $jsonParam = [];
     private string $loadName = '';
     private string $parentLoadName = '';
     private bool $isNestedLoad = false;
@@ -50,7 +50,6 @@ abstract class AbstractLoad extends AbstractRequest
      */
     public function initialize(): void
     {
-
     }
 
     /**
@@ -112,7 +111,7 @@ abstract class AbstractLoad extends AbstractRequest
         if ($this->getNgsLoadType() === 'json') {
             NGS()->define('JS_FRAMEWORK_ENABLE', false);
             NGS()->getTemplateEngine()->assign('ns', $this->getParams());
-        } else if ($this->getNgsLoadType() === 'smarty') {
+        } elseif ($this->getNgsLoadType() === 'smarty') {
             NGS()->getTemplateEngine()->assignJsonParams($this->getJsonParams());
             NGS()->getTemplateEngine()->assign('ns', $this->getParams());
         }
@@ -135,7 +134,7 @@ abstract class AbstractLoad extends AbstractRequest
     final public function nest(string $namespace, array $loadArr): void
     {
         $actionArr = NGS()->getRoutesEngine()->getLoadORActionByAction($loadArr['action']);
-        $loadObj = new $actionArr['action'];
+        $loadObj = new $actionArr['action']();
         //set that this load is nested
         $loadObj->setIsNestedLoad(true);
         $loadObj->setNgsParenLoadName($this->loadClassName);
@@ -156,11 +155,10 @@ abstract class AbstractLoad extends AbstractRequest
             NGS()->getLoadMapper()->setNestedLoads($this->getLoadName(), $loadArr['action'], $loadObj->getJsonParams());
         }
         if (!isset($this->params['inc'])) {
-            $this->params['inc'] = array();
+            $this->params['inc'] = [];
         }
         $this->setNestedLoadParams($namespace, $loadArr['action'], $loadObj);
         $this->params = array_merge($this->getParams(), $loadObj->getParentParams());
-
     }
 
     /**
@@ -198,10 +196,9 @@ abstract class AbstractLoad extends AbstractRequest
      *
      * @return void
      */
-    protected final function addParentParam(string $name, $value): void
+    final protected function addParentParam(string $name, $value): void
     {
         $this->parentParams[$name] = $value;
-
     }
 
     /**
@@ -230,7 +227,6 @@ abstract class AbstractLoad extends AbstractRequest
     protected function getParentParams(): array
     {
         return $this->parentParams;
-
     }
 
     /**
@@ -292,7 +288,7 @@ abstract class AbstractLoad extends AbstractRequest
      *
      * @return void
      */
-    public final function setIsNestedLoad($isNestedLoad)
+    final public function setIsNestedLoad($isNestedLoad)
     {
         $this->isNestedLoad = $isNestedLoad;
     }
@@ -302,7 +298,7 @@ abstract class AbstractLoad extends AbstractRequest
      *
      * @return boolean
      */
-    public final function isNestedLoad(): bool
+    final public function isNestedLoad(): bool
     {
         return $this->isNestedLoad;
     }
@@ -324,8 +320,10 @@ abstract class AbstractLoad extends AbstractRequest
             return $this->ngsLoadType;
         }
         //todo add additional header ngs framework checker
-        if ((isset($_SERVER['HTTP_ACCEPT']) && $_SERVER['HTTP_ACCEPT'] === 'application/json') || $this->getTemplate() === null
-            || strpos($this->getTemplate(), '.json')) {
+        if (
+            (isset($_SERVER['HTTP_ACCEPT']) && $_SERVER['HTTP_ACCEPT'] === 'application/json') || $this->getTemplate() === null
+            || strpos($this->getTemplate(), '.json')
+        ) {
             $this->ngsLoadType = 'json';
         } else {
             $this->ngsLoadType = 'smarty';
@@ -431,7 +429,7 @@ abstract class AbstractLoad extends AbstractRequest
      *
      * @return void
      */
-    public abstract function load();
+    abstract public function load();
 
     public function afterRequest(): void
     {
@@ -443,6 +441,4 @@ abstract class AbstractLoad extends AbstractRequest
     {
         return;
     }
-
-
 }

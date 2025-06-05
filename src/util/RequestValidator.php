@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Helper class for getting js files
  * have 3 general options connected with site mode (production/development)
@@ -27,7 +28,6 @@ use ngs\util\FormValidator;
 
 class RequestValidator
 {
-
     /**
      * @param $request
      * @param $arg
@@ -35,7 +35,6 @@ class RequestValidator
      */
     public function validate($request, $arg)
     {
-
     }
 
     /**
@@ -102,5 +101,4 @@ class RequestValidator
     {
         return trim(htmlspecialchars(strip_tags($var)));
     }
-
 }

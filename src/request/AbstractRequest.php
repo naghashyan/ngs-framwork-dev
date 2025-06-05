@@ -1,4 +1,5 @@
 <?php
+
 /**
  * parent class for all ngs requests (loads/action)
  *
@@ -25,7 +26,6 @@ use ngs\util\Pusher;
 
 abstract class AbstractRequest
 {
-
     protected $requestGroup;
     protected array $params = [];
     protected int $ngsStatusCode = 200;
@@ -102,7 +102,7 @@ abstract class AbstractRequest
      *
      * @return void
      */
-    public final function addParams($paramsArr)
+    final public function addParams($paramsArr)
     {
         if (!is_array($paramsArr)) {
             $paramsArr = [$paramsArr];
@@ -120,7 +120,7 @@ abstract class AbstractRequest
      *
      * @return void
      */
-    protected final function addParam(string $name, mixed $value)
+    final protected function addParam(string $name, mixed $value)
     {
         $this->params[$name] = $value;
     }
@@ -151,7 +151,7 @@ abstract class AbstractRequest
     }
 
 
-    protected abstract function onNoAccess(): void;
+    abstract protected function onNoAccess(): void;
 
     // public abstract function getValidator(): void;
 
@@ -226,7 +226,5 @@ abstract class AbstractRequest
         return NgsArgs::getInstance($this->getNgsRequestUUID());
     }
 
-    protected abstract function afterRequest(): void;
-
-
+    abstract protected function afterRequest(): void;
 }

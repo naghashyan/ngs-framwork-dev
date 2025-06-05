@@ -1,4 +1,5 @@
 <?php
+
 /**
  * parent class of all ngs managers
  *
@@ -23,12 +24,11 @@ use Exception;
 
 abstract class AbstractManager
 {
-
     public function __construct()
     {
     }
 
-    protected $orderFields = array();
+    protected $orderFields = [];
 
     /**
      * @param $dataObject
@@ -65,5 +65,4 @@ abstract class AbstractManager
         $str = time();
         return md5($str . "_" . rand(0, 50000));
     }
-
 }

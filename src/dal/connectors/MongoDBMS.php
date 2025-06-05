@@ -1,4 +1,5 @@
 <?php
+
 /**
  * ImprovedDBMS class uses MySQL Improved Extension to access DB.
  * This class provides full transaction support instead of DBMS class.
@@ -17,11 +18,10 @@ use ngs\exceptions\DebugException;
 
 class MongoDBMS extends \MongoClient
 {
-
     /**
      * Singleton instance of class
      */
-    private static $instance = NULL;
+    private static $instance = null;
 
     /**
      * Object which represents the connection to a MySQL Server
@@ -69,6 +69,5 @@ class MongoDBMS extends \MongoClient
 
     public function insert($params)
     {
-
     }
 }

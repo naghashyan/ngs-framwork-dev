@@ -22,7 +22,6 @@ namespace ngs\util;
 
 class HttpRequest
 {
-
     private $curl = null;
     private $params = null;
     private $reqParams = null;
@@ -44,7 +43,6 @@ class HttpRequest
 
     public function __construct()
     {
-
     }
 
     public function setOpt($key, $value)
@@ -158,7 +156,7 @@ class HttpRequest
 
     public function useSSL()
     {
-        $this->setOpt(CURLOPT_SSL_VERIFYPEER, FALSE);
+        $this->setOpt(CURLOPT_SSL_VERIFYPEER, false);
     }
 
     /**
@@ -237,9 +235,9 @@ class HttpRequest
             $reqHeaders[] = $key . ':' . $value;
         }
         $this->setOpt(CURLOPT_HTTPHEADER, $reqHeaders);
-        $this->setOpt(CURLOPT_HEADER, TRUE);
+        $this->setOpt(CURLOPT_HEADER, true);
         // Write result to variable
-        $this->setOpt(CURLOPT_RETURNTRANSFER, TRUE);
+        $this->setOpt(CURLOPT_RETURNTRANSFER, true);
         curl_setopt_array($curl, $this->getOpt());// write content in $doc
         $response = curl_exec($curl);
         $this->setResponseStatus(curl_getinfo($curl, CURLINFO_HTTP_CODE));
@@ -330,5 +328,4 @@ class HttpRequest
     {
         return $this->responseCookies;
     }
-
 }

@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Helper class that works with files
  * have 3 general function
@@ -29,7 +30,6 @@ use ngs\exceptions\DebugException;
 
 class FileUtils
 {
-
     /**
      * @param string $module
      * @param string $file
@@ -42,7 +42,7 @@ class FileUtils
         if ($filePath === false) {
             throw new DebugException('File Not Found');
         }
-        $options = array();
+        $options = [];
         $envConstantValue = NGS()->get('ENVIRONMENT');
         $currentEnvironment = 'production'; // Default
         if ($envConstantValue === 'development' || $envConstantValue === 'staging') {
@@ -77,7 +77,7 @@ class FileUtils
      * @throws DebugException
      * @throws Exception
      */
-    public function sendFile(string $file, array $options = array()): void
+    public function sendFile(string $file, array $options = []): void
     {
         $defaultOptions = ['filename' => null, 'mimeType' => null, 'contentLength' => null,
             'cache' => true, 'remoteFile' => false,
@@ -93,8 +93,10 @@ class FileUtils
             throw new DebugException($realPath . 'File Not Found');
         }
         if ($options['remoteFile'] === false) {
-            if (strpos($realPath, 'https://') !== false || strpos($realPath, 'http://') !== false
-                || strpos($realPath, 'ftp://') !== false) {
+            if (
+                strpos($realPath, 'https://') !== false || strpos($realPath, 'http://') !== false
+                || strpos($realPath, 'ftp://') !== false
+            ) {
                 $options['remoteFile'] = true;
             }
         }
@@ -177,8 +179,10 @@ class FileUtils
             }
 
             header('Etag: ' . $etag);
-            if ((isset($_SERVER['HTTP_IF_MODIFIED_SINCE']) && @strtotime($_SERVER['HTTP_IF_MODIFIED_SINCE']) === $lastModifiedTime)
-                || (isset($_SERVER['HTTP_IF_NONE_MATCH']) && trim($_SERVER['HTTP_IF_NONE_MATCH']) === $etag)) {
+            if (
+                (isset($_SERVER['HTTP_IF_MODIFIED_SINCE']) && @strtotime($_SERVER['HTTP_IF_MODIFIED_SINCE']) === $lastModifiedTime)
+                || (isset($_SERVER['HTTP_IF_NONE_MATCH']) && trim($_SERVER['HTTP_IF_NONE_MATCH']) === $etag)
+            ) {
                 header('HTTP/1.1 304 Not Modified');
                 return;
             }
@@ -192,7 +196,6 @@ class FileUtils
             header('Cache-Control: post-check=0, pre-check=0', false);
             header('Pragma: no-cache');
         }
-
     }
 
     /**
@@ -207,17 +210,17 @@ class FileUtils
     protected function doStreamFile($streamFile, $streamer): void
     {
         switch ($streamer) {
-            case 'xAccelRedirect' :
+            case 'xAccelRedirect':
                 header('X-Accel-Redirect: ' . $streamFile);
                 break;
-            case 'xSendfile' :
+            case 'xSendfile':
                 header('X-Sendfile: ' . $streamFile);
                 break;
-            case 'php' :
+            case 'php':
                 readfile($streamFile);
                 break;
-            default :
-                $this->_sendFile($streamFile);
+            default:
+                $this->sendFileInternal($streamFile);
                 break;
         }
     }
@@ -226,7 +229,7 @@ class FileUtils
      * @param $filePath
      * @throws Exception
      */
-    protected function _sendFile($filePath): void
+    protected function sendFileInternal($filePath): void
     {
         $this->cleanAll();
 
@@ -309,5 +312,4 @@ class FileUtils
             ob_end_clean();
         }
     }
-
 }

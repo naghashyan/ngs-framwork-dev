@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Helper class for getting js files
  * have 3 general options connected with site mode (production/development)
@@ -25,11 +26,10 @@ namespace ngs\util;
 
 class JsBuilder extends AbstractBuilder
 {
-
     public function getOutputDir(): string
     {
         $outDir = $this->resolveOutputSubDir('JS_DIR');
-   
+
         return $outDir;
     }
 
@@ -70,5 +70,4 @@ class JsBuilder extends AbstractBuilder
     {
         return 'text/javascript';
     }
-
 }

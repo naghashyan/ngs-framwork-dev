@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Helper class for getting js files
  * have 3 general options connected with site mode (production/development)
@@ -27,7 +28,6 @@ use ngs\exceptions\DebugException;
 
 class CssBuilder extends AbstractBuilder
 {
-
     protected function doBuild($file)
     {
         $files = $this->getBuilderArr(json_decode(file_get_contents($this->getBuilderFile())), $file);
@@ -65,7 +65,7 @@ class CssBuilder extends AbstractBuilder
         $moduleRoutesEngineInst = NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', \ngs\routes\NgsModuleRoutes::class);
         $ngsModulePath = '';
         if ($moduleRoutesEngineInst->isDefaultModule()) {
-            $ngsModulePath = $httpUtilsInst->getHttpHost(true, false); 
+            $ngsModulePath = $httpUtilsInst->getHttpHost(true, false);
         } else {
             $currentModuleNs = $moduleRoutesEngineInst->getModuleNS();
             $ngsModulePath = $httpUtilsInst->getHttpHost(true, false) . '/' . $currentModuleNs;
@@ -117,5 +117,4 @@ class CssBuilder extends AbstractBuilder
     {
         return 'text/css';
     }
-
 }

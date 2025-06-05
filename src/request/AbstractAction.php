@@ -1,4 +1,5 @@
 <?php
+
 /**
  * parent class of all ngs actions
  *
@@ -21,13 +22,11 @@ namespace ngs\request;
 
 abstract class AbstractAction extends \ngs\request\AbstractRequest
 {
-
     /**
      * @return void
      */
     public function initialize(): void
     {
-
     }
 
     public function afterRequest(): void
@@ -50,6 +49,4 @@ abstract class AbstractAction extends \ngs\request\AbstractRequest
     {
         return;
     }
-
-
 }

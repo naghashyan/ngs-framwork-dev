@@ -1,4 +1,5 @@
 <?php
+
 /**
  * AbstractMapper class is a base class for all mapper lasses.
  * It contains the basic functionality and also DBMS pointer.
@@ -30,7 +31,6 @@ use Redis;
 
 abstract class AbstractMysqlMapper extends AbstractMapper
 {
-
     public MysqlPDO $dbms;
     private ?Redis $redis = null;
 
@@ -123,7 +123,6 @@ abstract class AbstractMysqlMapper extends AbstractMapper
                 if (!isset($dbFields[$dbField])) {
                     $dbFields[$dbField] = $dbField;
                 }
-
             }
         }
         $dbColumns = implode(',', $dbFields);
@@ -160,8 +159,13 @@ abstract class AbstractMysqlMapper extends AbstractMapper
     public function updateField($id, string $fieldName, $fieldValue): ?int
     {
         // Create query.
-        $sqlQuery = sprintf('UPDATE `%s` SET `%s` = :%s WHERE `%s` = :id',
-            $this->getTableName(), $fieldName, $fieldName, $this->getPKFieldName());
+        $sqlQuery = sprintf(
+            'UPDATE `%s` SET `%s` = :%s WHERE `%s` = :id',
+            $this->getTableName(),
+            $fieldName,
+            $fieldName,
+            $this->getPKFieldName()
+        );
         return $this->executeUpdate($sqlQuery, ['id' => $id, $fieldName => $fieldValue]);
     }
 

@@ -1,4 +1,5 @@
 <?php
+
 /**
  * NGS abstract load all loads that response is json should extends from this class
  * this class extends from AbstractRequest class
@@ -26,7 +27,6 @@ use ngs\exceptions\NoAccessException;
 
 abstract class AbstractJsonLoad extends AbstractLoad
 {
-
     protected array $params = [];
 
     /**
@@ -47,5 +47,4 @@ abstract class AbstractJsonLoad extends AbstractLoad
     {
         return "json";
     }
-
 }

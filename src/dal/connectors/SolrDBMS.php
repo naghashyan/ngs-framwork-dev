@@ -1,4 +1,5 @@
 <?php
+
 /**
  *
  * Solr server connector wrapper for NGS framework
@@ -21,7 +22,6 @@ use Symfony\Component\EventDispatcher\EventDispatcher;
 
 class SolrDBMS extends \Solarium\Client
 {
-
     /**
      * Singleton instance of class
      */
@@ -69,6 +69,4 @@ class SolrDBMS extends \Solarium\Client
         }
         return self::$instance;
     }
-
-
 }

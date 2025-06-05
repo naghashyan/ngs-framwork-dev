@@ -1,4 +1,5 @@
 <?php
+
 /**
  *
  * @author Levon Naghashyan <levon@naghashyan.com>
@@ -15,33 +16,38 @@
  * file that was distributed with this source code.
  *
  */
+
 namespace ngs\exceptions {
-  class NotFoundException extends \Exception {
+    class NotFoundException extends \Exception
+    {
+        private $url = "";
+        private $action = "";
 
-    private $url = "";
-    private $action = "";
+        /**
+         * @param mixed $url
+         */
+        public function setRedirectUrl($url)
+        {
+            $this->url = $url;
+        }
 
-    /**
-     * @param mixed $url
-     */
-    public function setRedirectUrl($url) {
-      $this->url = $url;
+        public function getRedirectUrl()
+        {
+            return $this->url;
+        }
+
+        /**
+         * @param mixed $action
+         */
+        public function setRedirectAction($action)
+        {
+            $this->action = $action;
+        }
+
+        public function getRedirectAction()
+        {
+            return $this->action;
+        }
     }
-
-    public function getRedirectUrl(){
-      return $this->url;
-    }
-
-    /**
-     * @param mixed $action
-     */
-    public function setRedirectAction($action) {
-      $this->action = $action;
-    }
-
-    public function getRedirectAction(){
-      return $this->action;
-    }
-  }
 
 }

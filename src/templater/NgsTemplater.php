@@ -1,4 +1,5 @@
 <?php
+
 /**
  * NGS predefined templater class
  * handle smarty and json responses
@@ -24,7 +25,6 @@ use ngs\templater\NgsSmartyTemplater;
 
 class NgsTemplater extends AbstractTemplater
 {
-
     /**
      * constructor
      * reading Smarty config and setting up smarty environment accordingly
@@ -266,7 +266,7 @@ class NgsTemplater extends AbstractTemplater
 
     protected function getCustomJsParams()
     {
-        return array();
+        return [];
     }
 
     /**
@@ -276,5 +276,4 @@ class NgsTemplater extends AbstractTemplater
     {
         return '';
     }
-
 }

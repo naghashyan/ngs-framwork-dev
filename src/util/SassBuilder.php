@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Helper class for getting SASS files
  * have 3 general options connected with site mode (production/development)
@@ -29,7 +30,6 @@ namespace ngs\util {
 
     class SassBuilder extends AbstractBuilder
     {
-
         private $sassParser;
 
         public function streamFile(string $module, string $file): void
@@ -39,7 +39,7 @@ namespace ngs\util {
                 if (!$filePath) {
                     $this->build($file, true);
                 }
-                NGS()->createDefinedInstance('FILE_UTILS', \ngs\util\FileUtils::class)->sendFile($filePath, array("mimeType" => $this->getContentType(), "cache" => true));
+                NGS()->createDefinedInstance('FILE_UTILS', \ngs\util\FileUtils::class)->sendFile($filePath, ["mimeType" => $this->getContentType(), "cache" => true]);
                 return;
             }
             $this->build($file, false);
@@ -60,7 +60,7 @@ namespace ngs\util {
                 if (strpos($path, '@' . NGS()->get('NGS_CMS_NS')) !== false) {
                     return realpath(NGS()->getModuleDirByNS(NGS()->get('NGS_CMS_NS')) . '/' . NGS()->get('SASS_DIR')) . '/' . str_replace('@' . NGS()->get('NGS_CMS_NS') . '/', '', $path) . '.scss';
                 }
-//TODO: LM: should be refactored
+                //TODO: LM: should be refactored
                 if (strpos($path, '@' . NGS()->get('NGS_DASHBOARDS_NS')) !== false) {
                     return realpath(NGS()->getModuleDirByNS(NGS()->get('NGS_DASHBOARDS_NS')) . '/' . NGS()->get('SASS_DIR')) . '/' . str_replace('@' . NGS()->get('NGS_DASHBOARDS_NS') . '/', '', $path) . '.scss';
                 }
@@ -78,15 +78,15 @@ namespace ngs\util {
             $moduleRoutesEngineForParser = NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', \ngs\routes\NgsModuleRoutes::class);
             $ngsModulePathForParser = '';
             if ($moduleRoutesEngineForParser->isDefaultModule()) {
-                $ngsModulePathForParser = $httpUtilsForParser->getHttpHost(true, false); 
+                $ngsModulePathForParser = $httpUtilsForParser->getHttpHost(true, false);
             } else {
                 $currentModuleNsForParser = $moduleRoutesEngineForParser->getModuleNS();
                 $ngsModulePathForParser = $httpUtilsForParser->getHttpHost(true, false) . '/' . $currentModuleNsForParser;
             }
-            $this->sassParser->setVariables(array(
+            $this->sassParser->setVariables([
                 'NGS_PATH' => $ngsPathForParser,
                 'NGS_MODULE_PATH' => $ngsModulePathForParser
-            ));
+            ]);
             if ($mode) {
                 $outFileName = $files["output_file"];
                 if ($this->getOutputFileName() != null) {
@@ -100,7 +100,6 @@ namespace ngs\util {
             header('Content-type: ' . $this->getContentType());
             echo $this->getCss($files);
             exit;
-
         }
 
         private function getCss($files)
@@ -121,7 +120,6 @@ namespace ngs\util {
                     throw new DebugException("Please add or check if correct sass file in builder under section " . $value["file"]);
                 }
                 $sassStream .= file_get_contents($sassFilePath);
-
             }
             return $this->sassParser->compile($sassStream);
         }
@@ -148,7 +146,7 @@ namespace ngs\util {
 
         protected function getBuilderFile()
         {
-        return realpath(NGS()->getModuleDirByNS('') . '/' . NGS()->get('SASS_DIR') . "/builder.json");
+            return realpath(NGS()->getModuleDirByNS('') . '/' . NGS()->get('SASS_DIR') . "/builder.json");
         }
 
         protected function getEnvironment(): string
@@ -160,7 +158,6 @@ namespace ngs\util {
         {
             return "text/css";
         }
-
     }
 
 }

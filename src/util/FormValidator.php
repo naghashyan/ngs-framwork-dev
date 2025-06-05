@@ -1,4 +1,5 @@
 <?php
+
 /**
  * FormValidator class contains utility functions for working with html form value validation.
  *
@@ -24,7 +25,6 @@ use ngs\exceptions\NgsErrorException;
 
 class FormValidator
 {
-
     /**
      * Validate email adress
      *
@@ -53,7 +53,7 @@ class FormValidator
      */
     public static function validateString($str, $options = [])
     {
-        $defaultOptions = array("len" => 4, "allowChars" => "/^[A-Za-z0-9\_\-\.]*$/", "msg" => "");
+        $defaultOptions = ["len" => 4, "allowChars" => "/^[A-Za-z0-9\_\-\.]*$/", "msg" => ""];
         $options = array_merge($defaultOptions, $options);
         $str = FormValidator::secure($str);
         $params = isset($options["params"]) ? $options["params"] : [];
@@ -116,5 +116,4 @@ class FormValidator
     {
         return trim(htmlspecialchars(strip_tags($str)));
     }
-
 }

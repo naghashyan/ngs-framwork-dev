@@ -1,4 +1,5 @@
 <?php
+
 /**
  * AbstractSessionManager
  * this class provide abstract function
@@ -27,7 +28,6 @@ use ngs\request\AbstractAction;
 
 abstract class AbstractSessionManager
 {
-
     /**
      * Abstract method for get user
      * Children of the AbstractSessionManager class should override this method
@@ -69,5 +69,4 @@ abstract class AbstractSessionManager
      * @return boolean
      */
     abstract public function validateRequest($request): bool;
-
 }

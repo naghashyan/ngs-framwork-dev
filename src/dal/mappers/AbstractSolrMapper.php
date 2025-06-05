@@ -1,4 +1,5 @@
 <?php
+
 /**
  * AbstractSolrMapper class is a base class for all mapper lasses.
  * It contains the basic functionality and also DBMS pointer.
@@ -13,21 +14,19 @@
 
 namespace ngs\dal\mappers;
 
-
 use ngs\dal\connectors\SolrDBMS;
 use ngs\dal\dto\AbstractDto;
 use ngs\exceptions\DebugException;
-use \Solarium\QueryType\Update\Query\Document;
+use Solarium\QueryType\Update\Query\Document;
 
 abstract class AbstractSolrMapper extends AbstractMapper
 {
-
     public SolrDBMS $dbms;
 
     /**
      * Initializes DBMS pointer.
      */
-    function __construct()
+    public function __construct()
     {
         $host = NGS()->getConfig()->DB->solr->host;
         $user = NGS()->getConfig()->DB->solr->port;
@@ -83,7 +82,6 @@ abstract class AbstractSolrMapper extends AbstractMapper
                 foreach ($val as $item) {
                     $doc->setField($db_fields[$i], $item);
                 }
-
             }
         }
 
@@ -232,7 +230,7 @@ abstract class AbstractSolrMapper extends AbstractMapper
     public function deleteByPK($id): ?bool
     {
         if (is_numeric($id)) {
-            return $this->deleteByPKeys(array($id));
+            return $this->deleteByPKeys([$id]);
         }
         return null;
     }
@@ -276,7 +274,7 @@ abstract class AbstractSolrMapper extends AbstractMapper
      */
     protected function createDtoFromResultArray($results): array
     {
-        $resultArr = array();
+        $resultArr = [];
         foreach ($results as $result) {
             $tmpArr = [];
             foreach ($result as $key => $value) {
@@ -289,5 +287,4 @@ abstract class AbstractSolrMapper extends AbstractMapper
         }
         return $resultArr;
     }
-
 }
