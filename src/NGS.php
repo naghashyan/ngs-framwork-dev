@@ -58,7 +58,7 @@ class NGS extends NGSDeprecated
         return self::$instance[$module];
     }
 
-    public function initialize()
+    public function initialize(): void
     {
         $moduleConstatPath = realpath(NGS()->getConfigDir() . '/constants.php');
         if ($moduleConstatPath) {
@@ -238,10 +238,10 @@ class NGS extends NGSDeprecated
         return $this->loadedModules[$moduleName];
     }
 
-    private function loadModule(?string $moduleName = null, $environment = ""): string
+    private function loadModule(?string $moduleName = null, string $environment = ""): string
     {
         $namespace = preg_replace('/-/', '/', $moduleName, 1);
-        $module = new $namespace() . $moduleName($environment);
+        $module = new $namespace . $moduleName($environment);
         return $module;
     }
 }
