@@ -56,7 +56,7 @@ class LessBuilder extends AbstractBuilder
         $this->lessParser = new \Less_Parser($options);
 
         // Prepare components for parser string
-        $httpUtilsForParser = NGS()->createDefinedInstance('HTTP_UTILS', \ngs\util\HttpUtils::class);
+        $httpUtilsForParser = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class);
         $ngsPathForParser = $httpUtilsForParser->getHttpHost(true); // This is for @NGS_PATH
 
         $moduleRoutesEngineForParser = NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', \ngs\routes\NgsModuleRoutes::class);
@@ -95,7 +95,7 @@ class LessBuilder extends AbstractBuilder
                 $modulePath = $value['module'];
                 $module = $value['module'];
             }
-            $lessHost = NGS()->createDefinedInstance('HTTP_UTILS', \ngs\util\HttpUtils::class)->getHttpHostByNs($modulePath) . '/less/';
+            $lessHost = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class)->getHttpHostByNs($modulePath) . '/less/';
             $lessDir = realpath(NGS()->getModuleDirByNS($module) . '/' . NGS()->get('LESS_DIR'));
             $lessFilePath = realpath($lessDir . '/' . $value['file']);
             if ($lessFilePath === false) {

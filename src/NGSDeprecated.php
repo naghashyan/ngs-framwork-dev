@@ -592,17 +592,17 @@ abstract class NGSDeprecated
      * Returns the HTTP utilities instance.
      *
      * If a user-defined HTTP utility is configured under the key 'httpUtils',
-     * that instance will be returned; otherwise, the default HttpUtils
+     * that instance will be returned; otherwise, the default RequestContext
      * implementation is used.
      *
-     * @return \ngs\util\HttpUtils
-     * @throws \ngs\exceptions\DebugException if the HTTP_UTILS implementation cannot be created.
+     * @return \ngs\util\RequestContext
+     * @throws \ngs\exceptions\DebugException if the REQUEST_CONTEXT implementation cannot be created.
      * @deprecated since 4.3.0 Use \ngs\util\NgsFactory::getHttpUtils() instead.
      */
-    public function getHttpUtils(): \ngs\util\HttpUtils
+    public function getHttpUtils(): \ngs\util\RequestContext
     {
-        $httpUtils = $this->createDefinedInstance('HTTP_UTILS', \ngs\util\HttpUtils::class);
-        return $httpUtils;
+        $requestContext = $this->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class);
+        return $requestContext;
     }
 
     /**

@@ -49,7 +49,7 @@ class Dispatcher
         $this->getSubscribersAndSubscribeToEvents();
         try {
             $routesEngine = NGS()->createDefinedInstance('ROUTES_ENGINE', \ngs\routes\NgsRoutes::class);
-            $httpUtils = NGS()->createDefinedInstance('HTTP_UTILS', \ngs\util\HttpUtils::class);
+            $httpUtils = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class);
             $templateEngine = NGS()->createDefinedInstance('TEMPLATE_ENGINE', \ngs\templater\NgsTemplater::class);
             if ($routesArr === null) {
                 $routesArr = $routesEngine->getDynamicLoad($httpUtils->getRequestUri());
@@ -419,7 +419,7 @@ class Dispatcher
      */
     private function handleInvalidUserAndNoAccessException($ex): void
     {
-        $httpUtils = NGS()->createDefinedInstance('HTTP_UTILS', \ngs\util\HttpUtils::class);
+        $httpUtils = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class);
         $templateEngine = NGS()->createDefinedInstance('TEMPLATE_ENGINE', \ngs\templater\NgsTemplater::class);
 
         if (!$httpUtils->isAjaxRequest() && !NGS()->getDefinedValue('display_json')) {

@@ -190,7 +190,7 @@ class NgsTemplater extends AbstractTemplater
      */
     public function display(bool $fromExaption = false)
     {
-        $httpUtils = NGS()->createDefinedInstance('HTTP_UTILS', \ngs\util\HttpUtils::class);
+        $httpUtils = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class);
         $loadMapper = NGS()->createDefinedInstance('LOAD_MAPPER', \ngs\routes\NgsLoadMapper::class);
         $this->setNgsFromException($fromExaption);
         $this->beforeDisplay();

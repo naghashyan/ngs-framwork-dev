@@ -59,7 +59,7 @@ class CssBuilder extends AbstractBuilder
 
     protected function customBufferUpdates($buffer)
     {
-        $httpUtilsInst = NGS()->createDefinedInstance('HTTP_UTILS', \ngs\util\HttpUtils::class);
+        $httpUtilsInst = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class);
         $ngsPath = $httpUtilsInst->getHttpHost(true);
 
         $moduleRoutesEngineInst = NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', \ngs\routes\NgsModuleRoutes::class);
@@ -98,7 +98,7 @@ class CssBuilder extends AbstractBuilder
             if ($value['module'] != null) {
                 $module = $value['module'];
             }
-            $inputFile = NGS()->createDefinedInstance('HTTP_UTILS', \ngs\util\HttpUtils::class)->getHttpHostByNs($module) . '/devout/css/' . trim($value['file']);
+            $inputFile = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class)->getHttpHostByNs($module) . '/devout/css/' . trim($value['file']);
             echo '@import url("' . $inputFile . '");';
         }
     }

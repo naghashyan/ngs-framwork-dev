@@ -205,7 +205,7 @@ class NgsSmartyTemplater extends Smarty
         $_output = $_tpl->display();
 
         if (NGS()->get('JS_FRAMEWORK_ENABLE')) {
-            $httpUtils = NGS()->createDefinedInstance('HTTP_UTILS', \ngs\util\HttpUtils::class);
+            $httpUtils = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class);
             if (!$httpUtils->isAjaxRequest()) {
                 $jsonParams = $nsValue['inc'][$params['ns']]['jsonParam'];
                 $parentLoad = $nsValue['inc'][$params['ns']]['parent'];
@@ -247,7 +247,7 @@ class NgsSmartyTemplater extends Smarty
      */
     public function NGS($params, $template)
     {
-        $httpUtils = NGS()->createDefinedInstance('HTTP_UTILS', \ngs\util\HttpUtils::class);
+        $httpUtils = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class);
         if (!isset($params['cmd'])) {
             trigger_error("NGS: missing 'cmd' parameter");
             return;

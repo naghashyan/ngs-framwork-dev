@@ -159,8 +159,8 @@ NGS()->define('SESSION_MANAGER', 'ngs\session\NgsSessionManager');
 NGS()->define('TEMPLATE_ENGINE', 'ngs\templater\NgsTemplater');
 //---defining modules routing file
 NGS()->define('FILE_UTILS', 'ngs\util\FileUtils');
-//---defining modules routing file
-NGS()->define('HTTP_UTILS', 'ngs\util\HttpUtils');
+//---defining request context
+NGS()->define('REQUEST_CONTEXT', 'ngs\util\RequestContext');
 //---defining modules routing file
 NGS()->define('MODULES_ROUTES_ENGINE', 'ngs\routes\NgsModuleRoutes');
 //---defining routing file
@@ -237,3 +237,10 @@ NGS()->define('SMARTY_COMPILE_DIR', 'compile');
 */
 
 NGS()->define('BULK_UPDATE_LIMIT', 50);
+
+/*
+|--------------------------------------------------------------------------
+| INCLUDE DEPRECATED CONSTANTS
+|--------------------------------------------------------------------------
+*/
+include_once __DIR__ . '/NgsDefaultConstantsDeprecated.php';

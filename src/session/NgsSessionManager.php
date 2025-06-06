@@ -39,7 +39,7 @@ class NgsSessionManager extends \ngs\session\AbstractSessionManager
      */
     public function setUser($user, $remember = false, $useDomain = true, $useSubdomain = false): void
     {
-        $httpUtils = NGS()->createDefinedInstance('HTTP_UTILS', \ngs\util\HttpUtils::class);
+        $httpUtils = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class);
         $sessionTimeout = $remember ? 2078842581 : null;
         $domain = false;
         if ($useDomain) {
@@ -100,7 +100,7 @@ class NgsSessionManager extends \ngs\session\AbstractSessionManager
      */
     public function updateUserUniqueId($user, $useSubdomain = false): void
     {
-        $domain = NGS()->createDefinedInstance('HTTP_UTILS', \ngs\util\HttpUtils::class)->getHttpHost();
+        $domain = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class)->getHttpHost();
         if ($useSubdomain) {
             $domain = "." . $domain;
         }

@@ -72,7 +72,7 @@ namespace ngs\util {
                 $this->sassParser->setFormatter(Crunched::class);
             }
 
-            $httpUtilsForParser = NGS()->createDefinedInstance('HTTP_UTILS', \ngs\util\HttpUtils::class);
+            $httpUtilsForParser = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class);
             $ngsPathForParser = $httpUtilsForParser->getHttpHost(true);
 
             $moduleRoutesEngineForParser = NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', \ngs\routes\NgsModuleRoutes::class);
@@ -114,7 +114,7 @@ namespace ngs\util {
                     $modulePath = $value["module"];
                     $module = $value["module"];
                 }
-                $sassHost = NGS()->createDefinedInstance('HTTP_UTILS', \ngs\util\HttpUtils::class)->getHttpHostByNs($modulePath) . "/sass/";
+                $sassHost = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class)->getHttpHostByNs($modulePath) . "/sass/";
                 $sassFilePath = realpath(realpath(NGS()->getModuleDirByNS($module) . '/' . NGS()->get('SASS_DIR')) . "/" . $value["file"]);
                 if ($sassFilePath == false) {
                     throw new DebugException("Please add or check if correct sass file in builder under section " . $value["file"]);
