@@ -217,7 +217,9 @@ class Dispatcher
                 $loadObj->onNoAccess();
             }
 
-            $loadObj->setLoadName(NGS()->createDefinedInstance('ROUTES_ENGINE', \ngs\routes\NgsRoutes::class)->getContentLoad());
+            $routesEngine = NGS()->createDefinedInstance('ROUTES_ENGINE', \ngs\routes\NgsRoutes::class);
+            $contentLoad = $routesEngine->getContentLoad();
+            $loadObj->setLoadName($contentLoad);
             $loadObj->service();
 
             $templateEngine = NGS()->createDefinedInstance('TEMPLATE_ENGINE', \ngs\templater\NgsTemplater::class);
@@ -336,7 +338,9 @@ class Dispatcher
                 $loadObj->onNoAccess();
             }
 
-            $loadObj->setLoadName(NGS()->createDefinedInstance('ROUTES_ENGINE', \ngs\routes\NgsRoutes::class)->getContentLoad());
+            $routesEngine = NGS()->createDefinedInstance('ROUTES_ENGINE', \ngs\routes\NgsRoutes::class);
+            $contentLoad = $routesEngine->getContentLoad();
+            $loadObj->setLoadName($contentLoad);
             $loadObj->validate();
 
             // Passing arguments
@@ -549,7 +553,8 @@ class Dispatcher
      */
     private function validateRequest(object $request): bool
     {
-        return NGS()->createDefinedInstance('SESSION_MANAGER', \ngs\session\AbstractSessionManager::class)->validateRequest($request);
+        $sessionManager = NGS()->createDefinedInstance('SESSION_MANAGER', \ngs\session\AbstractSessionManager::class);
+        return $sessionManager->validateRequest($request);
     }
 
 
@@ -583,6 +588,7 @@ class Dispatcher
      */
     private function displayResult(): void
     {
-        NGS()->createDefinedInstance('TEMPLATE_ENGINE', \ngs\templater\NgsTemplater::class)->display();
+        $templateEngine = NGS()->createDefinedInstance('TEMPLATE_ENGINE', \ngs\templater\NgsTemplater::class);
+        $templateEngine->display();
     }
 }
