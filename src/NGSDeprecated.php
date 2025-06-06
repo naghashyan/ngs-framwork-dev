@@ -34,7 +34,8 @@ require_once('util/HttpUtils.php');
 abstract class NGSDeprecated
 {
     protected $ngsConfig = null;
-    protected $config = [];
+    protected array $config = [];
+    protected array $define = [];
 
     //----------------------------------------------------------------
     protected $dispatcher = null;
@@ -51,7 +52,7 @@ abstract class NGSDeprecated
     protected $lessBuilder = null;
     protected $sassBuilder = null;
     protected $isModuleEnable = false;
-    protected $define = [];
+
 
     public function initializeOld()
     {
@@ -166,7 +167,7 @@ abstract class NGSDeprecated
      *
      * @return object config
      */
-    public function getNgsConfig(): object
+    public function getNgsConfig(): mixed
     {
         $config = null;
         try {
