@@ -20,9 +20,8 @@
 
 namespace ngs;
 
+use ngs\event\EventManagerInterface;
 use ngs\event\EventManager;
-use ngs\event\structure\AbstractEventStructure;
-use ngs\event\subscriber\AbstractEventSubscriber;
 use ngs\exceptions\InvalidUserException;
 use ngs\exceptions\DebugException;
 use ngs\exceptions\NgsErrorException;
@@ -49,6 +48,23 @@ class Dispatcher
     private bool $isRedirect = false;
 
     /**
+     * Event manager instance
+     *
+     * @var EventManagerInterface
+     */
+    private EventManagerInterface $eventManager;
+
+    /**
+     * Constructor
+     *
+     * @param EventManagerInterface|null $eventManager Event manager instance
+     */
+    public function __construct(?EventManagerInterface $eventManager = null)
+    {
+        $this->eventManager = $eventManager ?? EventManager::getInstance();
+    }
+
+    /**
      * Manages matched routes and dispatches requests to appropriate handlers
      *
      * @param array|null $routesArr Routes array from the router
@@ -59,11 +75,12 @@ class Dispatcher
      */
     public function dispatch(?array $routesArr = null): void
     {
-        $this->getSubscribersAndSubscribeToEvents();
+        $subscribers = $this->eventManager->loadSubscribers();
+        $this->eventManager->subscribeToEvents($subscribers);
         try {
-            $routesEngine = NGS()->createDefinedInstance('ROUTES_ENGINE', \ngs\routes\NgsRoutes::class);
-            $httpUtils = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class);
-            $templateEngine = NGS()->createDefinedInstance('TEMPLATE_ENGINE', \ngs\templater\NgsTemplater::class);
+            $routesEngine = \NGS()->createDefinedInstance('ROUTES_ENGINE', \ngs\routes\NgsRoutes::class);
+            $httpUtils = \NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class);
+            $templateEngine = \NGS()->createDefinedInstance('TEMPLATE_ENGINE', \ngs\templater\NgsTemplater::class);
 
             if ($routesArr === null) {
                 $routesArr = $routesEngine->getDynamicLoad($httpUtils->getRequestUri());
@@ -85,7 +102,7 @@ class Dispatcher
                 case 'load':
                     if (isset($_GET['ngsValidate']) && $_GET['ngsValidate'] === 'true') {
                         $this->validate($routesArr['action']);
-                    } elseif (isset(NGS()->args()->args()['ngsValidate']) && NGS()->args()->args()['ngsValidate']) {
+                    } elseif (isset(\NGS()->args()->args()['ngsValidate']) && \NGS()->args()->args()['ngsValidate']) {
                         $this->validate($routesArr['action']);
                     } else {
                         $this->loadPage($routesArr['action']);
@@ -109,7 +126,7 @@ class Dispatcher
                     break;
             }
         } catch (DebugException $ex) {
-            $envConstantValue = NGS()->get('ENVIRONMENT');
+            $envConstantValue = \NGS()->get('ENVIRONMENT');
             $currentEnvironment = 'production'; // Default
 
             if ($envConstantValue === 'development' || $envConstantValue === 'staging') {
@@ -164,7 +181,7 @@ class Dispatcher
             // Log the error instead of var_dump in production
             error_log($error->getMessage());
 
-            if (NGS()->get('ENVIRONMENT') !== 'production') {
+            if (\NGS()->get('ENVIRONMENT') !== 'production') {
                 var_dump($error);
             }
 
@@ -539,197 +556,13 @@ class Dispatcher
 
 
     /**
-     * Loads event subscribers from configuration files and subscribes to their events
-     *
-     * @param bool $loadAll Whether to load subscribers from all modules
-     * 
-     * @return void
-     * @throws \Exception When an invalid subscriber is encountered
-     */
-    public function getSubscribersAndSubscribeToEvents(bool $loadAll = false): void
-    {
-        $confDir = NGS()->get('CONF_DIR');
-        $ngsCmsNs = NGS()->get('NGS_CMS_NS');
-        $adminToolsSubscribersPath = NGS()->getModuleDirByNS($ngsCmsNs) . '/' . $confDir . '/event_subscribers.json';
-        $adminToolsSubscribers = realpath($adminToolsSubscribersPath);
-
-        $subscribers = [];
-        if ($adminToolsSubscribers && file_exists($adminToolsSubscribers)) {
-            $subscribers = json_decode(file_get_contents($adminToolsSubscribers), true);
-        }
-
-        if ($loadAll) {
-            // Load subscribers from all modules
-            $ngsRoot = NGS()->get('NGS_ROOT');
-            $ngsModulesRoutes = NGS()->get('NGS_MODULS_ROUTS');
-            $moduleRouteFile = realpath($ngsRoot . '/' . $confDir . '/' . $ngsModulesRoutes);
-
-            if ($moduleRouteFile) {
-                $modulesData = json_decode(file_get_contents($moduleRouteFile), true);
-                $modules = $this->getModules($modulesData);
-
-                foreach ($modules as $module) {
-                    $moduleSubscribersPath = NGS()->getModuleDirByNS($module) . '/' . $confDir . '/event_subscribers.json';
-                    $moduleSubscribersFile = realpath($moduleSubscribersPath);
-
-                    if ($moduleSubscribersFile && file_exists($moduleSubscribersFile)) {
-                        $moduleSubscribers = json_decode(file_get_contents($moduleSubscribersFile), true);
-                        $subscribers = $this->mergeSubscribers($subscribers, $moduleSubscribers);
-                    }
-                }
-            }
-        } else {
-            // Load subscribers from the main module only
-            $moduleSubscribersPath = NGS()->get('NGS_ROOT') . '/' . $confDir . '/event_subscribers.json';
-            $moduleSubscribersFile = realpath($moduleSubscribersPath);
-
-            if ($moduleSubscribersFile && file_exists($moduleSubscribersFile)) {
-                $moduleSubscribers = json_decode(file_get_contents($moduleSubscribersFile), true);
-                $subscribers = $this->mergeSubscribers($subscribers, $moduleSubscribers);
-            }
-        }
-
-        $this->subscribeToSubscribersEvents($subscribers);
-    }
-
-
-    /**
-     * Returns an array of module directories from the modules data
-     *
-     * @param array $modulesData The modules configuration data
-     * 
-     * @return array Array of module directories
-     */
-    private function getModules(array $modulesData): array
-    {
-        if (!isset($modulesData['default'])) {
-            return [];
-        }
-
-        $result = [];
-
-        foreach ($modulesData['default'] as $type => $modules) {
-            if ($type === 'default') {
-                // Handle the default module
-                if (!in_array($modules['dir'], $result, true)) {
-                    $result[] = $modules['dir'];
-                }
-            } else {
-                // Handle other module types
-                foreach ($modules as $info) {
-                    if (is_array($info) && !in_array($info['dir'], $result, true)) {
-                        $result[] = $info['dir'];
-                    }
-                }
-            }
-        }
-
-        return $result;
-    }
-
-
-    /**
-     * Merges two subscriber arrays without duplication
-     *
-     * @param array $oldSubscribers The existing subscribers array
-     * @param array $newSubscribers The new subscribers to merge
-     * 
-     * @return array The merged subscribers array
-     */
-    private function mergeSubscribers(array $oldSubscribers, array $newSubscribers): array
-    {
-        foreach ($newSubscribers as $newSubscriber) {
-            if (!$this->subscriptionExists($oldSubscribers, $newSubscriber)) {
-                $oldSubscribers[] = $newSubscriber;
-            }
-        }
-
-        return $oldSubscribers;
-    }
-
-
-    /**
-     * Checks if a subscription already exists in the list
-     *
-     * @param array $subscriptions The existing subscriptions array
-     * @param array $newSubscriptionData The new subscription data to check
-     * 
-     * @return bool True if the subscription exists, false otherwise
-     */
-    private function subscriptionExists(array $subscriptions, array $newSubscriptionData): bool
-    {
-        foreach ($subscriptions as $subscription) {
-            if ($subscription['class'] === $newSubscriptionData['class']) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-
-    /**
-     * Stores all visible events with their parameters
-     *
-     * @var array
-     */
-    private array $allVisibleEvents = [];
-
-    /**
      * Returns all visible events
      *
      * @return array Array of visible events
      */
     public function getVisibleEvents(): array
     {
-        return $this->allVisibleEvents;
-    }
-
-    /**
-     * Subscribes to each subscriber's events
-     *
-     * @param array $subscribers Array of subscribers to process
-     * 
-     * @return void
-     * @throws \Exception When an invalid subscriber is encountered
-     * @throws \InvalidArgumentException When an invalid event structure class is provided
-     */
-    private function subscribeToSubscribersEvents(array $subscribers): void
-    {
-        $eventManager = EventManager::getInstance();
-
-        foreach ($subscribers as $subscriber) {
-            /** @var AbstractEventSubscriber $subscriberObject */
-            $subscriberObject = new $subscriber['class']();
-
-            if (!$subscriberObject instanceof AbstractEventSubscriber) {
-                throw new \Exception('Invalid subscriber: ' . $subscriber['class']);
-            }
-
-            $subscriptions = $subscriberObject->getSubscriptions();
-
-            foreach ($subscriptions as $eventStructClass => $handlerName) {
-                /** @var AbstractEventStructure $eventStructExample */
-                if (!is_a($eventStructClass, AbstractEventStructure::class, true)) {
-                    throw new \InvalidArgumentException('Invalid event structure class: ' . $eventStructClass);
-                }
-
-                $eventStructExample = $eventStructClass::getEmptyInstance();
-                $availableParams = $eventStructExample->getAvailableVariables();
-                $eventId = $eventStructExample->getEventId();
-
-                // Store visible events for later use
-                if ($eventStructExample->isVisible() && !isset($this->allVisibleEvents[$eventId])) {
-                    $this->allVisibleEvents[$eventId] = [
-                        'name' => $eventStructExample->getEventName(),
-                        'bulk_is_available' => $eventStructExample->bulkIsAvailable(),
-                        'params' => $availableParams
-                    ];
-                }
-
-                $eventManager->subscribeToEvent($eventStructClass, $subscriberObject, $handlerName);
-            }
-        }
+        return $this->eventManager->getVisibleEvents();
     }
 
     /**
