@@ -8,6 +8,7 @@ namespace ngs\tests {
     require_once __DIR__ . '/../src/event/EventManager.php';
     require_once __DIR__ . '/../src/event/structure/AbstractEventStructure.php';
     require_once __DIR__ . '/../src/event/structure/EventDispatchedStructure.php';
+    require_once __DIR__ . '/../src/event/structure/BeforeResultDisplayEventStructure.php';
     require_once __DIR__ . '/../src/event/subscriber/AbstractEventSubscriber.php';
 
     use ngs\Dispatcher;

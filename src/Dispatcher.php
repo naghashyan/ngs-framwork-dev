@@ -22,6 +22,7 @@ namespace ngs;
 
 use ngs\event\EventManagerInterface;
 use ngs\event\EventManager;
+use ngs\event\structure\BeforeResultDisplayEventStructure;
 use ngs\exceptions\InvalidUserException;
 use ngs\exceptions\DebugException;
 use ngs\exceptions\NgsErrorException;
@@ -29,7 +30,6 @@ use ngs\exceptions\NoAccessException;
 use ngs\exceptions\NotFoundException;
 use ngs\exceptions\RedirectException;
 use ngs\util\NgsArgs;
-use ngs\util\Pusher;
 
 /**
  * Class Dispatcher
@@ -78,9 +78,9 @@ class Dispatcher
         $subscribers = $this->eventManager->loadSubscribers();
         $this->eventManager->subscribeToEvents($subscribers);
         try {
-            $routesEngine = \NGS()->createDefinedInstance('ROUTES_ENGINE', \ngs\routes\NgsRoutes::class);
-            $httpUtils = \NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class);
-            $templateEngine = \NGS()->createDefinedInstance('TEMPLATE_ENGINE', \ngs\templater\NgsTemplater::class);
+            $routesEngine = NGS()->createDefinedInstance('ROUTES_ENGINE', \ngs\routes\NgsRoutes::class);
+            $httpUtils = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class);
+            $templateEngine = NGS()->createDefinedInstance('TEMPLATE_ENGINE', \ngs\templater\NgsTemplater::class);
 
             if ($routesArr === null) {
                 $routesArr = $routesEngine->getDynamicLoad($httpUtils->getRequestUri());
@@ -102,7 +102,7 @@ class Dispatcher
                 case 'load':
                     if (isset($_GET['ngsValidate']) && $_GET['ngsValidate'] === 'true') {
                         $this->validate($routesArr['action']);
-                    } elseif (isset(\NGS()->args()->args()['ngsValidate']) && \NGS()->args()->args()['ngsValidate']) {
+                    } elseif (isset(NGS()->args()->args()['ngsValidate']) && NGS()->args()->args()['ngsValidate']) {
                         $this->validate($routesArr['action']);
                     } else {
                         $this->loadPage($routesArr['action']);
@@ -126,7 +126,7 @@ class Dispatcher
                     break;
             }
         } catch (DebugException $ex) {
-            $envConstantValue = \NGS()->get('ENVIRONMENT');
+            $envConstantValue = NGS()->get('ENVIRONMENT');
             $currentEnvironment = 'production'; // Default
 
             if ($envConstantValue === 'development' || $envConstantValue === 'staging') {
@@ -181,7 +181,7 @@ class Dispatcher
             // Log the error instead of var_dump in production
             error_log($error->getMessage());
 
-            if (\NGS()->get('ENVIRONMENT') !== 'production') {
+            if (NGS()->get('ENVIRONMENT') !== 'production') {
                 var_dump($error);
             }
 
@@ -227,9 +227,8 @@ class Dispatcher
             $loadMapper = NGS()->createDefinedInstance('LOAD_MAPPER', \ngs\routes\NgsLoadMapper::class);
             $templateEngine->setPermalink($loadMapper->getNgsPermalink());
 
-            if (NGS()->get('SEND_HTTP_PUSH')) {
-                Pusher::getInstance()->push();
-            }
+            // Dispatch before result display event
+            $this->eventManager->dispatch(new BeforeResultDisplayEventStructure([]));
 
             $this->displayResult();
 
@@ -291,9 +290,8 @@ class Dispatcher
             $loadMapper = NGS()->createDefinedInstance('LOAD_MAPPER', \ngs\routes\NgsLoadMapper::class);
             $templateEngine->setPermalink($loadMapper->getNgsPermalink());
 
-            if (NGS()->get('SEND_HTTP_PUSH')) {
-                Pusher::getInstance()->push();
-            }
+            // Dispatch before result display event
+            $this->eventManager->dispatch(new BeforeResultDisplayEventStructure([]));
 
             $this->displayResult();
             $this->finishRequest();
