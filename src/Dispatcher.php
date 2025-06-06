@@ -1,6 +1,7 @@
 <?php
 
 /**
+ * Dispatcher class for handling requests and routing in the NGS framework
  *
  * @author Levon Naghashyan <levon@naghashyan.com>
  * @site https://naghashyan.com
@@ -31,18 +32,30 @@ use ngs\exceptions\RedirectException;
 use ngs\util\NgsArgs;
 use ngs\util\Pusher;
 
+/**
+ * Class Dispatcher
+ * 
+ * Handles routing and dispatching of requests to appropriate handlers
+ * 
+ * @package ngs
+ */
 class Dispatcher
 {
+    /**
+     * Flag to track if a redirect has occurred
+     *
+     * @var bool
+     */
     private bool $isRedirect = false;
 
     /**
-     * this method manage mathced routes
+     * Manages matched routes and dispatches requests to appropriate handlers
      *
-     * @param array|null $routesArr
+     * @param array|null $routesArr Routes array from the router
      *
      * @return void
-     * @throws DebugException
-     * @throws \JsonException
+     * @throws DebugException When a debug error occurs
+     * @throws \JsonException When JSON processing fails
      */
     public function dispatch(?array $routesArr = null): void
     {
@@ -51,21 +64,25 @@ class Dispatcher
             $routesEngine = NGS()->createDefinedInstance('ROUTES_ENGINE', \ngs\routes\NgsRoutes::class);
             $httpUtils = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class);
             $templateEngine = NGS()->createDefinedInstance('TEMPLATE_ENGINE', \ngs\templater\NgsTemplater::class);
+
             if ($routesArr === null) {
                 $routesArr = $routesEngine->getDynamicLoad($httpUtils->getRequestUri());
             }
+
             if (array_key_exists('file_url', $routesArr) && str_contains($routesArr['file_url'], 'js/ngs')) {
                 $routesArr['file_url'] = str_replace("js/ngs", "js/admin/ngs", $routesArr['file_url']);
             }
+
             if ($routesArr['matched'] === false) {
                 throw new NotFoundException('Load/Action Not found');
             }
+
             if (isset($routesArr['args'])) {
                 NgsArgs::getInstance()->setArgs($routesArr['args']);
             }
+
             switch ($routesArr['type']) {
                 case 'load':
-                    // $templateEngine initialized already
                     if (isset($_GET['ngsValidate']) && $_GET['ngsValidate'] === 'true') {
                         $this->validate($routesArr['action']);
                     } elseif (isset(NGS()->args()->args()['ngsValidate']) && NGS()->args()->args()['ngsValidate']) {
@@ -74,18 +91,19 @@ class Dispatcher
                         $this->loadPage($routesArr['action']);
                     }
                     break;
+
                 case 'api_load':
-                    // $templateEngine initialized already
                     $this->loadApiPage($routesArr);
-                    // no break
+                    // no break intentional - fall through to action case
+
                 case 'action':
-                    // $templateEngine initialized already
                     $this->doAction($routesArr['action']);
                     break;
+
                 case 'api_action':
-                    // $templateEngine initialized already
                     $this->doApiAction($routesArr);
                     exit;
+
                 case 'file':
                     $this->streamStaticFile($routesArr);
                     break;
@@ -93,18 +111,22 @@ class Dispatcher
         } catch (DebugException $ex) {
             $envConstantValue = NGS()->get('ENVIRONMENT');
             $currentEnvironment = 'production'; // Default
+
             if ($envConstantValue === 'development' || $envConstantValue === 'staging') {
                 $currentEnvironment = $envConstantValue;
             }
+
             if ($currentEnvironment !== 'production') {
                 $ex->display();
                 return;
             }
+
             $routesArr = $routesEngine->getNotFoundLoad();
             if ($routesArr === null || $this->isRedirect === true) {
                 echo '404';
                 exit;
             }
+
             $this->isRedirect = true;
             $this->dispatch($routesArr);
         } catch (RedirectException $ex) {
@@ -115,11 +137,13 @@ class Dispatcher
                     $httpUtils->redirect($ex->getRedirectUrl());
                     return;
                 }
+
                 $routesArr = $routesEngine->getNotFoundLoad();
-                if ($routesArr == null || $this->isRedirect === true) {
+                if ($routesArr === null || $this->isRedirect === true) {
                     echo '404';
                     exit;
                 }
+
                 $this->isRedirect = true;
                 $this->dispatch($routesArr);
             } catch (\Throwable $exp) {
@@ -137,51 +161,62 @@ class Dispatcher
         } catch (NoAccessException $ex) {
             $this->handleInvalidUserAndNoAccessException($ex);
         } catch (\Error $error) {
-            var_dump($error);
-            die();
+            // Log the error instead of var_dump in production
+            error_log($error->getMessage());
+
+            if (NGS()->get('ENVIRONMENT') !== 'production') {
+                var_dump($error);
+            }
+
+            header($_SERVER["SERVER_PROTOCOL"] . " 500 Internal Server Error", true, 500);
+            exit;
         }
     }
 
     /**
-     * manage ngs loads
-     * initialize load object
-     * verify access
-     * display collected output from loads
+     * Manages NGS loads by initializing load objects, verifying access,
+     * and displaying collected output from loads
      *
-     * @param string $action
+     * @param string $action The action to load
      *
      * @return void
-     * @throws DebugException
-     * @throws NoAccessException
+     * @throws DebugException When the load class is not found
+     * @throws NoAccessException When access is denied
      */
     public function loadPage(string $action): void
     {
         try {
+            // Convert hyphenated namespace to proper namespace format
             $action = str_replace('-', '\\', $action);
+
             if (class_exists($action) === false) {
                 throw new DebugException($action . ' Load Not found');
             }
+
             $loadObj = new $action();
             $loadObj->initialize();
+
             if (!$this->validateRequest($loadObj)) {
                 $loadObj->onNoAccess();
             }
+
             $loadObj->setLoadName(NGS()->createDefinedInstance('ROUTES_ENGINE', \ngs\routes\NgsRoutes::class)->getContentLoad());
             $loadObj->service();
+
             $templateEngine = NGS()->createDefinedInstance('TEMPLATE_ENGINE', \ngs\templater\NgsTemplater::class);
             $templateEngine->setType($loadObj->getNgsLoadType());
             $templateEngine->setTemplate($loadObj->getTemplate());
+
             $loadMapper = NGS()->createDefinedInstance('LOAD_MAPPER', \ngs\routes\NgsLoadMapper::class);
             $templateEngine->setPermalink($loadMapper->getNgsPermalink());
+
             if (NGS()->get('SEND_HTTP_PUSH')) {
                 Pusher::getInstance()->push();
             }
+
             $this->displayResult();
 
-            if (PHP_SAPI === 'fpm-fcgi') {
-                session_write_close();
-                fastcgi_finish_request();
-            }
+            $this->finishRequest();
             $loadObj->afterRequest();
         } catch (NoAccessException $ex) {
             if (isset($loadObj) && is_object($loadObj)) {
@@ -194,50 +229,58 @@ class Dispatcher
     }
 
     /**
-     * load for api load
+     * Handles API load requests
      *
-     * @param array $routesArr
-     * @throws DebugException
-     * @throws InvalidUserException
-     * @throws NoAccessException
+     * @param array $routesArr The routes array containing action and parameters
+     * 
+     * @return void
+     * @throws DebugException When the load class is not found
+     * @throws InvalidUserException When user is invalid
+     * @throws NoAccessException When access is denied
      */
-    public function loadApiPage(array $routesArr)
+    public function loadApiPage(array $routesArr): void
     {
         try {
             $action = $routesArr['action'];
             $action = str_replace('-', '\\', $action);
-            if (class_exists($action) == false) {
+
+            if (class_exists($action) === false) {
                 throw new DebugException($action . ' Load Not found');
             }
+
             /** @var NgsApiAction $loadObj */
             $loadObj = new $action();
             $loadObj->setAction($routesArr['action_method']);
             $loadObj->setRequestValidators($routesArr['request_params']);
             $loadObj->setResponseValidators($routesArr['response_params']);
             $loadObj->initialize();
+
             if (!$this->validateRequest($loadObj)) {
                 $loadObj->onNoAccess();
             }
-            //$loadObj->setLoadName(NGS()->getRoutesEngine()->getContentLoad());
+
             $loadObj->service();
+
             $templateEngine = NGS()->createDefinedInstance('TEMPLATE_ENGINE', \ngs\templater\NgsTemplater::class);
+
             if (method_exists($loadObj, 'getNgsLoadType')) {
                 $templateEngine->setType($loadObj->getNgsLoadType());
             }
+
             if (method_exists($loadObj, 'getTemplate')) {
                 $templateEngine->setTemplate($loadObj->getTemplate());
             }
+
             $loadMapper = NGS()->createDefinedInstance('LOAD_MAPPER', \ngs\routes\NgsLoadMapper::class);
             $templateEngine->setPermalink($loadMapper->getNgsPermalink());
+
             if (NGS()->get('SEND_HTTP_PUSH')) {
                 Pusher::getInstance()->push();
             }
-            $this->displayResult();
 
-            if (php_sapi_name() === 'fpm-fcgi') {
-                session_write_close();
-                fastcgi_finish_request();
-            }
+            $this->displayResult();
+            $this->finishRequest();
+
             if (is_object($loadObj)) {
                 $loadObj->afterRequest();
             }
@@ -254,28 +297,41 @@ class Dispatcher
         }
     }
 
+    /**
+     * Validates a load action
+     *
+     * @param string $action The action to validate
+     * 
+     * @return void
+     * @throws DebugException When the load class is not found
+     * @throws NoAccessException When access is denied
+     * @throws InvalidUserException When user is invalid
+     */
     public function validate(string $action): void
     {
         try {
             if (class_exists($action) === false) {
                 throw new DebugException($action . ' Load Not found');
             }
+
             $loadObj = new $action();
             $loadObj->initialize();
+
             if (!$this->validateRequest($loadObj)) {
                 $loadObj->onNoAccess();
             }
+
             $loadObj->setLoadName(NGS()->createDefinedInstance('ROUTES_ENGINE', \ngs\routes\NgsRoutes::class)->getContentLoad());
             $loadObj->validate();
-            //passing arguments
+
+            // Passing arguments
             $templateEngine = NGS()->createDefinedInstance('TEMPLATE_ENGINE', \ngs\templater\NgsTemplater::class);
             $templateEngine->setType('json');
             $templateEngine->assignJsonParams($loadObj->getParams());
+
             $this->displayResult();
-            if (PHP_SAPI === 'fpm-fcgi') {
-                session_write_close();
-                fastcgi_finish_request();
-            }
+            $this->finishRequest();
+
             $loadObj->afterRequest();
         } catch (NoAccessException $ex) {
             if (isset($loadObj) && is_object($loadObj)) {
@@ -291,39 +347,42 @@ class Dispatcher
     }
 
     /**
-     * manage ngs action
-     * initialize action object
-     * verify access
-     * display action output
+     * Manages NGS actions by initializing action objects, verifying access,
+     * and displaying action output
      *
-     * @param string $action
+     * @param string $action The action to execute
      *
      * @return void
-     *
+     * @throws DebugException When the action class is not found
+     * @throws NoAccessException When access is denied
      */
-    private function doAction(string $action)
+    private function doAction(string $action): void
     {
         try {
+            // Convert hyphenated namespace to proper namespace format
             $action = str_replace('-', '\\', $action);
+
             if (class_exists($action) === false) {
                 throw new DebugException($action . ' Action Not found');
             }
+
             $actionObj = new $action();
             $actionObj->initialize();
 
             if (!$this->validateRequest($actionObj)) {
                 $actionObj->onNoAccess();
             }
+
             $actionObj->service();
-            //passing arguments
+
+            // Passing arguments
             $templateEngine = NGS()->createDefinedInstance('TEMPLATE_ENGINE', \ngs\templater\NgsTemplater::class);
             $templateEngine->setType('json');
             $templateEngine->assignJsonParams($actionObj->getParams());
+
             $this->displayResult();
-            if (php_sapi_name() === 'fpm-fcgi') {
-                session_write_close();
-                fastcgi_finish_request();
-            }
+            $this->finishRequest();
+
             $actionObj->afterRequest();
         } catch (NoAccessException $ex) {
             if (isset($actionObj) && is_object($actionObj)) {
@@ -336,21 +395,25 @@ class Dispatcher
     }
 
     /**
-     * do action for api action
+     * Handles API action requests
      *
-     * @param array $routesArr
-     * @throws DebugException
-     * @throws InvalidUserException
-     * @throws NoAccessException
+     * @param array $routesArr The routes array containing action and parameters
+     * 
+     * @return void
+     * @throws DebugException When the action class is not found
+     * @throws InvalidUserException When user is invalid
+     * @throws NoAccessException When access is denied
      */
-    private function doApiAction(array $routesArr)
+    private function doApiAction(array $routesArr): void
     {
         try {
             $action = $routesArr['action'];
             $action = str_replace('-', '\\', $action);
+
             if (class_exists($action) === false) {
                 throw new DebugException($action . ' Action Not found');
             }
+
             $actionObj = new $action();
             $actionObj->setAction($routesArr['action_method']);
             $actionObj->setRequestValidators($routesArr['request_params']);
@@ -360,16 +423,17 @@ class Dispatcher
             if (!$this->validateRequest($actionObj)) {
                 $actionObj->onNoAccess();
             }
+
             $actionObj->service();
-            //passing arguments
+
+            // Passing arguments
             $templateEngine = NGS()->createDefinedInstance('TEMPLATE_ENGINE', \ngs\templater\NgsTemplater::class);
             $templateEngine->setType('json');
             $templateEngine->assignJsonParams($actionObj->getParams());
+
             $this->displayResult();
-            if (php_sapi_name() === 'fpm-fcgi') {
-                session_write_close();
-                fastcgi_finish_request();
-            }
+            $this->finishRequest();
+
             $actionObj->afterRequest();
         } catch (NoAccessException $ex) {
             if (isset($actionObj) && is_object($actionObj)) {
@@ -384,82 +448,105 @@ class Dispatcher
         }
     }
 
-    private function streamStaticFile($fileArr)
+    /**
+     * Streams a static file to the client
+     *
+     * @param array $fileArr The file information array
+     * 
+     * @return void
+     */
+    private function streamStaticFile(array $fileArr): void
     {
         $moduleDir = NGS()->getModuleDirByNS($fileArr['module']);
         $publicDirForModule = realpath($moduleDir . '/' . NGS()->get('PUBLIC_DIR'));
         $filePath = realpath($publicDirForModule . '/' . $fileArr['file_url']);
+
         if (file_exists($filePath)) {
-            $stramer = NGS()->createDefinedInstance('FILE_UTILS', \ngs\util\FileUtils::class);
+            $streamer = NGS()->createDefinedInstance('FILE_UTILS', \ngs\util\FileUtils::class);
         } else {
             switch ($fileArr['file_type']) {
                 case 'js':
-                    $stramer = NGS()->createDefinedInstance('JS_BUILDER', \ngs\util\JsBuilderV2::class);
+                    $streamer = NGS()->createDefinedInstance('JS_BUILDER', \ngs\util\JsBuilderV2::class);
                     break;
+
                 case 'css':
-                    $stramer = NGS()->createDefinedInstance('CSS_BUILDER', \ngs\util\CssBuilder::class);
+                    $streamer = NGS()->createDefinedInstance('CSS_BUILDER', \ngs\util\CssBuilder::class);
                     break;
+
                 case 'less':
-                    $stramer = NGS()->createDefinedInstance('LESS_BUILDER', \ngs\util\LessBuilder::class);
+                    $streamer = NGS()->createDefinedInstance('LESS_BUILDER', \ngs\util\LessBuilder::class);
                     break;
+
                 case 'sass':
-                    $stramer = NGS()->createDefinedInstance('SASS_BUILDER', \ngs\util\SassBuilder::class);
+                    $streamer = NGS()->createDefinedInstance('SASS_BUILDER', \ngs\util\SassBuilder::class);
                     break;
+
                 default:
-                    $stramer = NGS()->createDefinedInstance('FILE_UTILS', \ngs\util\FileUtils::class);
+                    $streamer = NGS()->createDefinedInstance('FILE_UTILS', \ngs\util\FileUtils::class);
                     break;
             }
         }
-        $stramer->streamFile($fileArr['module'], $fileArr['file_url']);
+
+        $streamer->streamFile($fileArr['module'], $fileArr['file_url']);
     }
 
     /**
-     * @param $ex
-     * @throws DebugException
+     * Handles InvalidUserException and NoAccessException by redirecting or displaying error message
+     *
+     * @param InvalidUserException|NoAccessException $ex The exception to handle
+     * 
+     * @return void
+     * @throws DebugException When a debug error occurs
      */
     private function handleInvalidUserAndNoAccessException($ex): void
     {
         $httpUtils = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class);
         $templateEngine = NGS()->createDefinedInstance('TEMPLATE_ENGINE', \ngs\templater\NgsTemplater::class);
 
+        // For non-AJAX requests, redirect to the specified URL
         if (!$httpUtils->isAjaxRequest() && !NGS()->getDefinedValue('display_json')) {
             $httpUtils->redirect($ex->getRedirectTo());
             return;
         }
+
+        // For AJAX requests, return JSON response
         $templateEngine->setHttpStatusCode($ex->getHttpCode());
         $templateEngine->assignJson('code', $ex->getCode());
         $templateEngine->assignJson('msg', $ex->getMessage());
+
         if ($ex->getRedirectTo() !== '') {
             $templateEngine->assignJson('redirect_to', $ex->getRedirectTo());
         }
+
         if ($ex->getRedirectToLoad() !== '') {
             $templateEngine->assignJson('redirect_to_load', $ex->getRedirectToLoad());
         }
+
         $templateEngine->display(true);
     }
 
     /**
-     * validate request load/action access permissions
+     * Validates request load/action access permissions
      *
-     * @param object $request
+     * @param object $request The request object to validate
      *
-     * @return boolean
-     *
+     * @return bool True if the request is valid, false otherwise
      */
-    private function validateRequest($request)
+    private function validateRequest(object $request): bool
     {
-        if (NGS()->createDefinedInstance('SESSION_MANAGER', \ngs\session\AbstractSessionManager::class)->validateRequest($request)) {
-            return true;
-        }
-        return false;
+        return NGS()->createDefinedInstance('SESSION_MANAGER', \ngs\session\AbstractSessionManager::class)->validateRequest($request);
     }
 
 
     /**
-     * subscribe to all events
+     * Loads event subscribers from configuration files and subscribes to their events
      *
+     * @param bool $loadAll Whether to load subscribers from all modules
+     * 
+     * @return void
+     * @throws \Exception When an invalid subscriber is encountered
      */
-    public function getSubscribersAndSubscribeToEvents(bool $loadAll = false)
+    public function getSubscribersAndSubscribeToEvents(bool $loadAll = false): void
     {
         $confDir = NGS()->get('CONF_DIR');
         $ngsCmsNs = NGS()->get('NGS_CMS_NS');
@@ -472,26 +559,32 @@ class Dispatcher
         }
 
         if ($loadAll) {
+            // Load subscribers from all modules
             $ngsRoot = NGS()->get('NGS_ROOT');
             $ngsModulesRoutes = NGS()->get('NGS_MODULS_ROUTS');
             $moduleRouteFile = realpath($ngsRoot . '/' . $confDir . '/' . $ngsModulesRoutes);
+
             if ($moduleRouteFile) {
                 $modulesData = json_decode(file_get_contents($moduleRouteFile), true);
                 $modules = $this->getModules($modulesData);
+
                 foreach ($modules as $module) {
                     $moduleSubscribersPath = NGS()->getModuleDirByNS($module) . '/' . $confDir . '/event_subscribers.json';
-                    $modulSubscribersFile = realpath($moduleSubscribersPath);
-                    if ($modulSubscribersFile && file_exists($modulSubscribersFile)) {
-                        $moduleSubscribers = json_decode(file_get_contents($modulSubscribersFile), true);
+                    $moduleSubscribersFile = realpath($moduleSubscribersPath);
+
+                    if ($moduleSubscribersFile && file_exists($moduleSubscribersFile)) {
+                        $moduleSubscribers = json_decode(file_get_contents($moduleSubscribersFile), true);
                         $subscribers = $this->mergeSubscribers($subscribers, $moduleSubscribers);
                     }
                 }
             }
         } else {
+            // Load subscribers from the main module only
             $moduleSubscribersPath = NGS()->get('NGS_ROOT') . '/' . $confDir . '/event_subscribers.json';
-            $modulSubscribersFile = realpath($moduleSubscribersPath);
-            if ($modulSubscribersFile && file_exists($modulSubscribersFile)) {
-                $moduleSubscribers = json_decode(file_get_contents($modulSubscribersFile), true);
+            $moduleSubscribersFile = realpath($moduleSubscribersPath);
+
+            if ($moduleSubscribersFile && file_exists($moduleSubscribersFile)) {
+                $moduleSubscribers = json_decode(file_get_contents($moduleSubscribersFile), true);
                 $subscribers = $this->mergeSubscribers($subscribers, $moduleSubscribers);
             }
         }
@@ -501,24 +594,28 @@ class Dispatcher
 
 
     /**
-     * returns modules dirs
+     * Returns an array of module directories from the modules data
      *
-     * @param array $modulesData
-     * @return array
+     * @param array $modulesData The modules configuration data
+     * 
+     * @return array Array of module directories
      */
-    private function getModules(array $modulesData)
+    private function getModules(array $modulesData): array
     {
         if (!isset($modulesData['default'])) {
             return [];
         }
+
         $result = [];
 
         foreach ($modulesData['default'] as $type => $modules) {
             if ($type === 'default') {
+                // Handle the default module
                 if (!in_array($modules['dir'], $result, true)) {
                     $result[] = $modules['dir'];
                 }
             } else {
+                // Handle other module types
                 foreach ($modules as $info) {
                     if (is_array($info) && !in_array($info['dir'], $result, true)) {
                         $result[] = $info['dir'];
@@ -532,16 +629,17 @@ class Dispatcher
 
 
     /**
-     * merge 2 subscribers array without duplication
+     * Merges two subscriber arrays without duplication
      *
-     * @param array $oldSubscribers
-     * @param array $newSubscribers
-     * @return array
+     * @param array $oldSubscribers The existing subscribers array
+     * @param array $newSubscribers The new subscribers to merge
+     * 
+     * @return array The merged subscribers array
      */
-    private function mergeSubscribers(array $oldSubscribers, array $newSubscribers)
+    private function mergeSubscribers(array $oldSubscribers, array $newSubscribers): array
     {
         foreach ($newSubscribers as $newSubscriber) {
-            if (!$this->subscriptionExsits($oldSubscribers, $newSubscriber)) {
+            if (!$this->subscriptionExists($oldSubscribers, $newSubscriber)) {
                 $oldSubscribers[] = $newSubscriber;
             }
         }
@@ -551,13 +649,14 @@ class Dispatcher
 
 
     /**
-     * indicates if subscriber already exists in list
+     * Checks if a subscription already exists in the list
      *
-     * @param array $subscriptions
-     * @param array $newSubscriptionData
-     * @return bool
+     * @param array $subscriptions The existing subscriptions array
+     * @param array $newSubscriptionData The new subscription data to check
+     * 
+     * @return bool True if the subscription exists, false otherwise
      */
-    private function subscriptionExsits(array $subscriptions, array $newSubscriptionData)
+    private function subscriptionExists(array $subscriptions, array $newSubscriptionData): bool
     {
         foreach ($subscriptions as $subscription) {
             if ($subscription['class'] === $newSubscriptionData['class']) {
@@ -569,38 +668,57 @@ class Dispatcher
     }
 
 
-    private $allVisibleEvents = [];
+    /**
+     * Stores all visible events with their parameters
+     *
+     * @var array
+     */
+    private array $allVisibleEvents = [];
 
-    public function getVisibleEvents()
+    /**
+     * Returns all visible events
+     *
+     * @return array Array of visible events
+     */
+    public function getVisibleEvents(): array
     {
         return $this->allVisibleEvents;
     }
 
     /**
-     * subscribe to each subscriber events
+     * Subscribes to each subscriber's events
      *
-     * @param $subscribers
-     * @throws \Exception
+     * @param array $subscribers Array of subscribers to process
+     * 
+     * @return void
+     * @throws \Exception When an invalid subscriber is encountered
+     * @throws \InvalidArgumentException When an invalid event structure class is provided
      */
-    private function subscribeToSubscribersEvents(array $subscribers)
+    private function subscribeToSubscribersEvents(array $subscribers): void
     {
         $eventManager = EventManager::getInstance();
+
         foreach ($subscribers as $subscriber) {
             /** @var AbstractEventSubscriber $subscriberObject */
             $subscriberObject = new $subscriber['class']();
+
             if (!$subscriberObject instanceof AbstractEventSubscriber) {
-                throw new \Exception('wrong subscriber ' . $subscriber['class']);
+                throw new \Exception('Invalid subscriber: ' . $subscriber['class']);
             }
 
             $subscriptions = $subscriberObject->getSubscriptions();
+
             foreach ($subscriptions as $eventStructClass => $handlerName) {
                 /** @var AbstractEventStructure $eventStructExample */
                 if (!is_a($eventStructClass, AbstractEventStructure::class, true)) {
-                    throw new \InvalidArgumentException();
+                    throw new \InvalidArgumentException('Invalid event structure class: ' . $eventStructClass);
                 }
+
                 $eventStructExample = $eventStructClass::getEmptyInstance();
                 $availableParams = $eventStructExample->getAvailableVariables();
                 $eventId = $eventStructExample->getEventId();
+
+                // Store visible events for later use
                 if ($eventStructExample->isVisible() && !isset($this->allVisibleEvents[$eventId])) {
                     $this->allVisibleEvents[$eventId] = [
                         'name' => $eventStructExample->getEventName(),
@@ -608,15 +726,27 @@ class Dispatcher
                         'params' => $availableParams
                     ];
                 }
+
                 $eventManager->subscribeToEvent($eventStructClass, $subscriberObject, $handlerName);
             }
         }
     }
 
     /**
-     * display collected output
-     * from loads and actions
-     *
+     * Handles session closing and fastcgi request finishing
+     * 
+     * @return void
+     */
+    private function finishRequest(): void
+    {
+        if (PHP_SAPI === 'fpm-fcgi') {
+            session_write_close();
+            fastcgi_finish_request();
+        }
+    }
+
+    /**
+     * Displays collected output from loads and actions
      *
      * @return void
      */
