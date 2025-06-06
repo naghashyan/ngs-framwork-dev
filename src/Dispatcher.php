@@ -79,11 +79,11 @@ class Dispatcher
         $this->eventManager->subscribeToEvents($subscribers);
         try {
             $routesEngine = NGS()->createDefinedInstance('ROUTES_ENGINE', \ngs\routes\NgsRoutes::class);
-            $httpUtils = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class);
+            $requestContext = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class);
             $templateEngine = NGS()->createDefinedInstance('TEMPLATE_ENGINE', \ngs\templater\NgsTemplater::class);
 
             if ($routesArr === null) {
-                $routesArr = $routesEngine->getDynamicLoad($httpUtils->getRequestUri());
+                $routesArr = $routesEngine->getDynamicLoad($requestContext->getRequestUri());
             }
 
             if (array_key_exists('file_url', $routesArr) && str_contains($routesArr['file_url'], 'js/ngs')) {
@@ -147,11 +147,11 @@ class Dispatcher
             $this->isRedirect = true;
             $this->dispatch($routesArr);
         } catch (RedirectException $ex) {
-            $httpUtils->redirect($ex->getRedirectTo());
+            $requestContext->redirect($ex->getRedirectTo());
         } catch (NotFoundException $ex) {
             try {
                 if ($ex->getRedirectUrl() !== '') {
-                    $httpUtils->redirect($ex->getRedirectUrl());
+                    $requestContext->redirect($ex->getRedirectUrl());
                     return;
                 }
 
