@@ -24,6 +24,7 @@ namespace ngs\routes;
 
 use ngs\exceptions\DebugException;
 use ngs\exceptions\NotFoundException;
+use ngs\util\NgsEnvironmentContext;
 
 class NgsRoutes
 {
@@ -347,7 +348,8 @@ class NgsRoutes
                 return ['matched' => false];
             }
 
-            if (NGS()->getEnvironment() === 'development') {
+            $environmentContext = NgsEnvironmentContext::getInstance();
+            if ($environmentContext->isDevelopment()) {
                 $this->onNoMatchedRoutes();
             }
             throw new NotFoundException();

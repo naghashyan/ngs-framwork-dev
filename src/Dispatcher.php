@@ -30,6 +30,7 @@ use ngs\exceptions\NoAccessException;
 use ngs\exceptions\NotFoundException;
 use ngs\exceptions\RedirectException;
 use ngs\util\NgsArgs;
+use ngs\util\NgsEnvironmentContext;
 
 /**
  * Class Dispatcher
@@ -126,14 +127,8 @@ class Dispatcher
                     break;
             }
         } catch (DebugException $ex) {
-            $envConstantValue = NGS()->get('ENVIRONMENT');
-            $currentEnvironment = 'production'; // Default
-
-            if ($envConstantValue === 'development' || $envConstantValue === 'staging') {
-                $currentEnvironment = $envConstantValue;
-            }
-
-            if ($currentEnvironment !== 'production') {
+            $environmentContext = NgsEnvironmentContext::getInstance();
+            if (!$environmentContext->isProduction()) {
                 $ex->display();
                 return;
             }
@@ -181,7 +176,8 @@ class Dispatcher
             // Log the error instead of var_dump in production
             error_log($error->getMessage());
 
-            if (NGS()->get('ENVIRONMENT') !== 'production') {
+            $environmentContext = NgsEnvironmentContext::getInstance();
+            if (!$environmentContext->isProduction()) {
                 var_dump($error);
             }
 

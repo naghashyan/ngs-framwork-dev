@@ -27,5 +27,13 @@
 | They will be removed in future versions.
 */
 
-// @deprecated since version 4.0.0, use REQUEST_CONTEXT instead
-NGS()->define('HTTP_UTILS', 'ngs\util\HttpUtils');
+// Load deprecated constants from JSON file
+$constantsFile = __DIR__ . '/../../conf/constants.json';
+if (file_exists($constantsFile)) {
+    $constants = json_decode(file_get_contents($constantsFile), true);
+    if ($constants && isset($constants['deprecated'])) {
+        foreach ($constants['deprecated'] as $key => $value) {
+            NGS()->define($key, $value);
+        }
+    }
+}

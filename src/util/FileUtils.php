@@ -27,6 +27,7 @@ namespace ngs\util;
 
 use Exception;
 use ngs\exceptions\DebugException;
+use ngs\util\NgsEnvironmentContext;
 
 class FileUtils
 {
@@ -43,12 +44,8 @@ class FileUtils
             throw new DebugException('File Not Found');
         }
         $options = [];
-        $envConstantValue = NGS()->get('ENVIRONMENT');
-        $currentEnvironment = 'production'; // Default
-        if ($envConstantValue === 'development' || $envConstantValue === 'staging') {
-            $currentEnvironment = $envConstantValue;
-        }
-        if ($currentEnvironment !== 'production') {
+        $environmentContext = NgsEnvironmentContext::getInstance();
+        if (!$environmentContext->isProduction()) {
             $options['cache'] = false;
         }
         try {

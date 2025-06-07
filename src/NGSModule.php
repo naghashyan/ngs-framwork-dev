@@ -1,240 +1,325 @@
 <?php
 
+declare(strict_types=1);
+
 namespace ngs;
 
 use Composer\Factory;
-use Composer\Package\RootPackageInterface;
-use ngs\event\EventManager;
-use ngs\event\structure\AbstractEventStructure;
-use ngs\event\subscriber\AbstractEventSubscriber;
 use ngs\routes\NgsModuleRoutes;
 use ngs\exceptions\NgsException;
+use ngs\util\NgsEnvironmentContext;
 
 class NGSModule
 {
-    protected string $name;
-    protected string $environment;
-
-    protected array $constants;
-    protected ?array $config;
-    protected ?NgsModuleRoutes $routesManager;
-    private $events = [];
-    protected string $parentDir;
+    protected array $constants = [];
+    protected string $moduleDir;
 
     /**
-     * @param $moduleName
-     */
-    public function __construct($moduleName, $environment)
-    {
-        $this->name = $moduleName;
-        $this->environment = $environment;
-
-
-        $this->loadParams();
-        $this->loadConstants();
-        $this->loadConfig();
-        $this->loadEvents();
-    }
-
-    protected function loadConstants()
-    {
-        $constantsFile = $this->getConstantsFile($this->parentDir);
-
-        if (file_exists($constantsFile)) {
-            $constants = json_decode(file_get_contents($constantsFile), true);
-
-            if (is_array($constants)) {
-                foreach ($constants as $section => $sectionValues) {
-                    if (is_array($sectionValues)) {
-                        // Process each section (constants, directories, classes)
-                        foreach ($sectionValues as $constName => $constValue) {
-                            // Check if there's an environment-specific value for this constant
-                            if (is_array($constValue) && isset($constValue[$this->environment])) {
-                                // Use the environment-specific value
-                                $this->constants[$constName] = $constValue[$this->environment];
-                            } else {
-                                // Use the default value
-                                $this->constants[$constName] = $constValue;
-                            }
-                        }
-                    } else {
-                        // Handle top-level constants (if any)
-                        $this->constants[$section] = $sectionValues;
-                    }
-                }
-            }
-        }
-    }
-
-    protected function loadConfig()
-    {
-        $configFile = $this->getConfigFile($this->parentDir);
-
-        if (file_exists($configFile)) {
-            $configs = json_decode(file_get_contents($configFile), true);
-
-            if (is_array($configs)) {
-                foreach ($configs as $key => $config) {
-                    //                    if (!defined($key)) {
-                    //                        define($key, $config);
-                    //                    }
-                    $this->config[$key] = $config;
-                }
-            }
-        }
-    }
-
-    /**
-     * Get the config file path.
+     * Cache for instances created by createDefinedInstance.
      *
-     * @return string The path to the default config file.
+     * @var array<string, object>
      */
-    private function getConfigFile($parentDir = ''): string
+    protected array $instanceCache = [];
+
+    /**
+     * Constructor for NGSModule.
+     *
+     * @param string|null $moduleDir The path to the module
+     * @param array $overrideConstants Constants to override from constants.json
+     * @param array $parentConstants Parent constants to be used as base
+     * @param array $configReplacements Array of replacements for %placeholder% values in constants
+     * @throws NgsException If modulePath is null and module name cannot be determined
+     */
+    public function __construct(?string $moduleDir = null, array $configReplacements = [], array $overrideConstants = [], array $parentConstants = [])
     {
-        $configDir = $this->getConfigDir($parentDir);
+        if ($moduleDir !== null) {
+            $this->moduleDir = $moduleDir;
+        }
 
-        $configFileName = ("/config_" . $this->environment . "json");
+        $this->loadConstants($configReplacements, $overrideConstants, $parentConstants);
 
-        return $configDir . $configFileName;
+
     }
+
+    /**
+     * Loads constants from the constants file and applies overrides.
+     * 
+     * @param array $overrideConstants Constants to override from constants.json
+     * @param array $parentConstants Parent constants to be used as base
+     * @param array $configReplacements Array of replacements for %placeholder% values in constants
+     * @throws NgsException If constants.json is missing or required constants are missing
+     */
+    protected function loadConstants(array $configReplacements = [], array $overrideConstants = [], array $parentConstants = []): void
+    {
+        // First set the parent constants as the base
+        $this->constants = $parentConstants;
+
+        $constantsFile = $this->getConstantsFile($this->moduleDir);
+        $environmentContext = NgsEnvironmentContext::getInstance();
+
+        if (!file_exists($constantsFile)) {
+            throw new NgsException("Constants file not found: {$constantsFile}", 1);
+        }
+
+        $constants = json_decode(file_get_contents($constantsFile), true);
+
+        if (!is_array($constants)) {
+            throw new NgsException("Invalid constants file format: {$constantsFile}", 1);
+        }
+
+        // Process constants from file and add to parent constants
+        $this->processConstants($constants, $environmentContext, $configReplacements, $this->constants);
+
+        // Apply override constants
+        $this->processConstants($overrideConstants, $environmentContext, $configReplacements, $this->constants);
+
+        // Validate required constants
+        if (!isset($this->constants['NAME'])) {
+            throw new NgsException("Required constant 'name' is missing in constants.json", 1);
+        }
+
+        if (!isset($this->constants['VERSION'])) {
+            throw new NgsException("Required constant 'version' is missing in constants.json", 1);
+        }
+    }
+
+    /**
+     * Process a constant value by applying environment-specific values and config replacements.
+     *
+     * @param mixed $value The value to process
+     * @param NgsEnvironmentContext $environmentContext The environment context
+     * @param array $configReplacements Array of replacements for %placeholder% values
+     * @return mixed The processed value
+     */
+    protected function processConstantValue(mixed $value, NgsEnvironmentContext $environmentContext, array $configReplacements): mixed
+    {
+        // Check if there's an environment-specific value for this constant
+        $processedValue = $environmentContext->getEnvironmentSpecificValue($value);
+
+        // Apply replacements for %placeholder% values if the value is a string
+        if (is_string($processedValue)) {
+            $processedValue = $this->applyConfigReplacements($processedValue, $configReplacements);
+        }
+
+        return $processedValue;
+    }
+
+    /**
+     * Process constants from an array and add them to the target array.
+     *
+     * @param array $constants The constants to process
+     * @param NgsEnvironmentContext $environmentContext The environment context
+     * @param array $configReplacements Array of replacements for %placeholder% values
+     * @param array $targetArray Reference to the array where processed constants will be stored
+     */
+    protected function processConstants(array $constants, NgsEnvironmentContext $environmentContext, array $configReplacements, array &$targetArray): void
+    {
+        foreach ($constants as $section => $sectionValues) {
+            if (is_array($sectionValues)) {
+                // Process each section (constants, directories, classes)
+                foreach ($sectionValues as $constName => $constValue) {
+                    $processedValue = $this->processConstantValue($constValue, $environmentContext, $configReplacements);
+                    $targetArray[$constName] = $processedValue;
+                }
+            } else {
+                // Handle top-level constants (if any)
+                $processedValue = $this->processConstantValue($sectionValues, $environmentContext, $configReplacements);
+                $targetArray[$section] = $processedValue;
+            }
+        }
+    }
+
+
 
     /**
      * Get the constants file path.
      *
-     * @return string The path to the default constant file.
+     * @param string $parentDir The parent directory
+     * @return string The path to the constants file
      */
-    private function getConstantsFile($parentDir = ''): string
+    private function getConstantsFile(string $parentDir = ''): string
     {
         $configDir = $this->getConfigDir($parentDir);
+        $environmentContext = NgsEnvironmentContext::getInstance();
 
-        $constantsFileName = "/constants";
-        if (!empty($this->environment)) {
-            $constantsFileName .= ("_" . $this->environment . ".json");
-        } else {
-            $constantsFileName .= ".json";
-        }
-
-        $configFile = $configDir . $constantsFileName;
-
-        return $configFile;
-    }
-
-
-    /**
-     *
-     * @return void
-     */
-    private function loadParams()
-    {
-        $composer = Factory::getComposer();
-        $rootPackage = $composer->getPackage();
-        $extraData = $rootPackage->getExtra();
-
-        $this->parentDir = $extraData['ngs'][$this->getName()]['parent'] ?? null;
-    }
-
-    public function getName()
-    {
-        return $this->name;
-    }
-
-    public function getConstant($constantName)
-    {
-        if (isset($this->constants[$constantName])) {
-            return $this->constants[$constantName];
-        } else {
-            return null;
-        }
-    }
-
-    public function getRoutesManager(): ?NgsModuleRoutes
-    {
-        if ($this->routesManager !== null) {
-            return $this->routesManager;
-        }
-        try {
-            $manager = $this->getConstant('MODULES_ROUTES_ENGINE');
-            $this->routesManager = new $manager();
-        } catch (\Exception $e) {
-            throw new NgsException('ROUTES ENGINE NOT FOUND, please check in constants.php ROUTES_ENGINE variable', 1);
-        }
-        return $this->routesManager;
-    }
-
-    public function getConfig(): ?array
-    {
-        return $this->config;
-    }
-
-    private function getConfigDir($parentDir = '')
-    {
-        if (empty($parentDir)) {
-            return __DIR__ . '/conf';
-        } else {
-            return $parentDir . '/conf';
-        }
+        return $environmentContext->getConstantsFilePath($configDir);
     }
 
     /**
-     * subscribe to all events
+     * Gets the name of the module.
      *
+     * @return string The module name
      */
-    protected function loadEvents()
+    public function getName(): string
     {
-        $subscribersFile = $this->getConfigDir($this->parentDir) . '/event_subscribers.json';
-        $subscribers = [];
-        if (file_exists($subscribersFile)) {
-            $subscribersList = json_decode(file_get_contents($subscribersFile), true);
-        }
-
-        foreach ($subscribersList as $subscriber) {
-            $subscribers[] = $subscriber;
-        }
-
-        $this->subscribeToEvents($subscribers);
+        return $this->constants['NAME'];
     }
 
     /**
-     * subscribe to each subscriber events
+     * Gets the version of the module from constants.
      *
-     * @param $subscribers
-     * @throws \Exception
+     * @return string The module version
+     * @throws NgsException If version is not defined in constants
      */
-    private function subscribeToEvents(array $subscribers)
+    public function getVersion(): string
     {
-        $eventManager = EventManager::getInstance();
+        if (!isset($this->constants['version'])) {
+            throw new NgsException("Module version is not defined in constants", 1);
+        }
 
-        foreach ($subscribers as $subscriber) {
+        return $this->constants['version'];
+    }
 
-            /** @var AbstractEventSubscriber $subscriberObject */
+    /**
+     * Gets the value of a defined constant.
+     *
+     * @param string $key The key to get the value for
+     * @param string|null $module The module to get the value from (unused parameter)
+     * @return mixed The value or null if not found
+     */
+    public function getDefinedValue(string $key, ?string $module = null): mixed
+    {
+        return $this->constants[$key] ?? null;
+    }
 
-            $subscriberObject = new $subscriber();
+    /**
+     * Alias for getDefinedValue.
+     *
+     * @param string $key The key to get the value for
+     * @param string|null $module The module to get the value from (unused parameter)
+     * @return mixed The value or null if not found
+     */
+    public function get(string $key, ?string $module = null): mixed
+    {
+        return $this->getDefinedValue($key);
+    }
 
-            if (!$subscriberObject instanceof AbstractEventSubscriber) {
-                throw new \Exception('wrong subscriber ' . $subscriber);
+    /**
+     * Defines a value with the given key.
+     *
+     * @param string $key The key to define
+     * @param mixed $value The value to set
+     */
+    public function define(string $key, mixed $value): void
+    {
+        $this->constants[$key] = $value;
+    }
+
+    /**
+     * Checks if a key is defined.
+     *
+     * @param string $key The key to check
+     * @return bool True if the key is defined, false otherwise
+     */
+    public function defined(string $key): bool
+    {
+        return isset($this->constants[$key]);
+    }
+
+    /**
+     * Gets a constant value by name.
+     *
+     * @param string $constantName The name of the constant
+     * @return mixed The constant value or null if not found
+     */
+    public function getConstant(string $constantName): mixed
+    {
+        return $this->constants[$constantName] ?? null;
+    }
+
+    /**
+     * Creates or retrieves an instance for the given configuration constant,
+     * and validates it against the expected class.
+     *
+     * @template T of object
+     * @param string $constantName Name of the configuration constant
+     * @param string $expectedClass Fully qualified class name expected
+     * @param bool $forceNew Whether to force creation of a new instance
+     * @return object The instantiated and validated service
+     * @throws \Exception If the constant is missing, class cannot be instantiated,
+     *                    or the instance is not of the expected type
+     */
+    public function createDefinedInstance(string $constantName, string $expectedClass, bool $forceNew = false): object
+    {
+        // Look up the class name from constants
+        $className = $this->getDefinedValue($constantName);
+
+        if (!$className || !class_exists($className)) {
+            throw new \Exception(
+                sprintf('Class "%s" for constant "%s" not found.', $className ?? 'null', $constantName)
+            );
+        }
+
+        // Check if we have a cached instance and forceNew is false
+        $cacheKey = $constantName . '_' . $expectedClass;
+        if (!$forceNew && isset($this->instanceCache[$cacheKey])) {
+            return $this->instanceCache[$cacheKey];
+        }
+
+        // Instantiate and validate type
+        $instance = new $className();
+
+        if (!$instance instanceof $expectedClass) {
+            throw new \Exception(
+                sprintf(
+                    'Instance of "%s" does not implement expected "%s" for constant "%s".',
+                    $className,
+                    $expectedClass,
+                    $constantName
+                )
+            );
+        }
+
+        // Cache the instance for future use
+        $this->instanceCache[$cacheKey] = $instance;
+
+        return $instance;
+    }
+
+    /**
+     * Extracts the module name from a namespace.
+     *
+     * @param string $namespace The namespace to extract from
+     * @return string The extracted module name or empty string if namespace is empty
+     */
+    public function getModuleByNS(string $namespace): string
+    {
+        if (empty($namespace)) {
+            return '';
+        }
+
+        $parts = explode('\\', $namespace);
+        return end($parts);
+    }
+
+    /**
+     * Applies configuration replacements to a string value.
+     * Replaces %placeholder% with the corresponding value from the replacements array.
+     *
+     * @param string $value The string value to process
+     * @param array $replacements Array of replacements where keys are placeholder names without % symbols
+     * @return string The processed string with replacements applied
+     */
+    protected function applyConfigReplacements(string $value, array $replacements): string
+    {
+        if (empty($replacements) || !str_contains($value, '%')) {
+            return $value;
+        }
+
+        // Find all %placeholder% patterns in the string
+        preg_match_all('/%([^%]+)%/', $value, $matches);
+
+        if (empty($matches[1])) {
+            return $value;
+        }
+
+        // Apply replacements
+        foreach ($matches[1] as $placeholder) {
+            if (isset($replacements[$placeholder])) {
+                $value = str_replace("%{$placeholder}%", (string)$replacements[$placeholder], $value);
             }
-
-            $subscriptions = $subscriberObject->getSubscriptions();
-
-            foreach ($subscriptions as $eventStructClass => $handlerName) {
-
-                /** @var AbstractEventStructure $eventStructExample */
-                if (!is_a($eventStructClass, AbstractEventStructure::class, true)) {
-                    throw new \InvalidArgumentException();
-                }
-
-                $eventStructExample = $eventStructClass::getEmptyInstance();
-                $availableParams = $eventStructExample->getAvailableVariables();
-
-                if ($eventStructExample->isVisible() && !isset($this->events[$eventStructExample->getEventId()])) {
-                    $this->events[$eventStructExample->getEventId()] = [
-                        'name' => $eventStructExample->getEventName(),
-                        'bulk_is_available' => $eventStructExample->bulkIsAvailable(),
-                        'params' => $availableParams
-                    ];
-                }
-                $eventManager->subscribeToEvent($eventStructClass, $subscriberObject, $handlerName);
-            }
         }
+
+        return $value;
     }
 }

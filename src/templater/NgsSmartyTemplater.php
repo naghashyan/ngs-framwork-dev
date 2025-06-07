@@ -22,6 +22,7 @@ namespace ngs\templater;
 
 use ngs\exceptions\DebugException;
 use ngs\util\NgsArgs;
+use ngs\util\NgsEnvironmentContext;
 use Smarty\Smarty;
 
 class NgsSmartyTemplater extends Smarty
@@ -324,12 +325,8 @@ class NgsSmartyTemplater extends Smarty
                 return $httpUtils->getHost();
                 break;
             case 'get_environment':
-                $envConstantValue = NGS()->get('ENVIRONMENT');
-                $currentEnvironment = 'production'; // Default
-                if ($envConstantValue === 'development' || $envConstantValue === 'staging') {
-                    $currentEnvironment = $envConstantValue;
-                }
-                return $currentEnvironment;
+                $environmentContext = NgsEnvironmentContext::getInstance();
+                return $environmentContext->getEnvironment();
                 break;
             case 'get_static_path':
                 $protocol = false;
@@ -395,7 +392,8 @@ class NgsSmartyTemplater extends Smarty
         $jsString .= '</head>';
         $tpl_output = str_replace('</head>', $jsString, $tpl_output);
 
-        if (NGS()->getEnvironment() == "production") {
+        $environmentContext = NgsEnvironmentContext::getInstance();
+        if ($environmentContext->isProduction()) {
             $tpl_output = preg_replace('![\t ]*[\r]+[\t ]*!', '', $tpl_output);
         }
 

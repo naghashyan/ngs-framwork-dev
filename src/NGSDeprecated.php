@@ -27,14 +27,14 @@ namespace ngs;
 use ngs\exceptions\DebugException;
 use ngs\exceptions\NgsException;
 use ngs\util\NgsArgs;
+use ngs\util\NgsEnvironmentContext;
 
 require_once('routes/NgsModuleRoutes.php');
 require_once('util/HttpUtils.php');
 
-abstract class NGSDeprecated
+abstract class NGSDeprecated extends NGSModule
 {
     protected $ngsConfig = null;
-    protected array $config = [];
     protected array $define = [];
 
     //----------------------------------------------------------------
@@ -85,46 +85,6 @@ abstract class NGSDeprecated
      |--------------------------------------------------------------------------
      */
 
-    /**
-     * @param $key
-     * @param $module
-     * @return string|null
-     */
-    abstract public function getDefinedValue(string $key, string $module = null): mixed;
-
-    /**
-     * @param $key
-     * @param $module
-     * @return string|null
-     */
-    abstract public function get(string $key, string $module = null): mixed;
-
-    /**
-     * @param $key
-     * @param $value
-     * @param $module
-     * @return void
-     */
-    abstract public function define(string $key, mixed $value): void;
-
-    /**
-     * @param $key
-     * @param $module
-     * @return bool
-     */
-    abstract public function defined(string $key): bool;
-
-    /**
-     * @param null $module
-     * @return object config
-     * @throws DebugException
-     * static function that return ngs
-     * global config
-     *
-     * @params $prefix
-     *
-     */
-    abstract public function getConfig(?string $prefix = null): mixed;
 
     //------------------
 
@@ -738,15 +698,7 @@ abstract class NGSDeprecated
      */
     public function getEnvironment(): string
     {
-        $definedValue = $this->getDefinedValue('ENVIRONMENT');
-        switch ($definedValue) {
-            case 'development':
-            case 'staging':
-                return $definedValue;
-                break;
-            default:
-                return 'production';
-        }
+        return NgsEnvironmentContext::getInstance()->getEnvironment();
     }
 
     /**
@@ -757,13 +709,7 @@ abstract class NGSDeprecated
      */
     public function getShortEnvironment(): string
     {
-        $env = 'prod';
-        if ($this->getEnvironment() === 'development') {
-            $env = 'dev';
-        } elseif ($this->getEnvironment() === 'staging') {
-            return 'stage';
-        }
-        return $env;
+        return NgsEnvironmentContext::getInstance()->getShortEnvironment();
     }
 
 
@@ -790,7 +736,6 @@ abstract class NGSDeprecated
         echo '\033[' . $colorCode . $log . '  \033[' . $colorArr['white'] . '0m \n';
     }
 
-    abstract public function createDefinedInstance(string $constantName, string $expectedClass, bool $forceNew = false): object;
 }
 
 

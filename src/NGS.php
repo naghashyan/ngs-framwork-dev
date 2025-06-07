@@ -5,7 +5,12 @@ declare(strict_types=1);
 namespace ngs {
 
     use ngs\exceptions\DebugException;
-    use ngs\routes\NgsModuleRoutes as NgsModuleRoutes;
+    use ngs\exceptions\NgsException;
+    use ngs\event\EventManager;
+    use ngs\event\structure\AbstractEventStructure;
+    use ngs\event\subscriber\AbstractEventSubscriber;
+    use ngs\routes\NgsModuleRoutes;
+    use ngs\util\NgsEnvironmentContext;
 
     /**
      * Base NGS class for static functions that will be visible from any classes.
@@ -30,39 +35,95 @@ namespace ngs {
     class NGS extends NGSDeprecated
     {
         /**
-         * Stores singleton instances of this class.
+         * Stores singleton instance of this class.
          *
-         * @var array<string, self>
+         * @var NGS|null
          */
-        private static array $instance = [];
+        private static ?NGS $instance = null;
 
-        /**
-         * Storage for created instances keyed by constant name.
-         *
-         * @var array<string, object>
-         */
-        private array $instances = [];
 
         /**
          * Storage for loaded modules.
          *
-         * @var array<string|null, object|string|null>
+         * @var array<string|null, object|null>
          */
         private array $loadedModules = [];
 
         /**
-         * Storage for defined values.
+         * Storage for events.
          *
-         * @var array<string, mixed>
+         * @var array<string, array{name: string, bulk_is_available: bool, params: array}>
          */
-        protected array $define = [];
+        private array $events = [];
 
         /**
-         * Storage for configuration values.
+         * Configuration storage.
          *
          * @var array<string, mixed>
          */
         protected array $config = [];
+
+        /**
+         * Constructor for NGS.
+         *
+         * @param string|null $moduleDir The path to the module
+         * @param array $overrideConstants Constants to override from constants.json
+         * @throws \Exception If document root is not set to htdocs
+         * @throws NgsException If modulePath is null and module name cannot be determined
+         */
+        public function __construct()
+        {
+            // Document root validation and NGS root definition
+            $this->validateAndSetDocumentRoot();
+
+            // Load configuration
+            $this->loadConfig();
+
+            // Load framework constants
+            $frameworkConstantsPath = __DIR__ . '/../conf';
+            $environmentContext = NgsEnvironmentContext::getInstance();
+            $frameworkConstantsFile = $environmentContext->getConstantsFilePath($frameworkConstantsPath);
+            $frameworkConstants = [];
+
+            if (file_exists($frameworkConstantsFile)) {
+                $constants = json_decode(file_get_contents($frameworkConstantsFile), true);
+                if (is_array($constants)) {
+                    $this->processConstants($constants, $environmentContext, [], $frameworkConstants);
+                }
+            }
+
+            $projectRoot = $this->getDefinedValue("NGS_ROOT");
+
+            parent::__construct($projectRoot, $this->config, [], $frameworkConstants);
+
+            // Initialize module routes
+            //$this->getModulesRoutesEngine(true)->initialize();
+
+            // Load event subscribers
+            $this->loadEvents();
+        }
+
+        /**
+         * Validates document root and sets NGS_ROOT constant.
+         *
+         * @throws \Exception If document root is not set to htdocs
+         */
+        private function validateAndSetDocumentRoot(): void
+        {
+            $currentDir = getcwd();
+
+            if (!str_contains($currentDir, DIRECTORY_SEPARATOR . 'htdocs') && 
+                !str_contains($currentDir, '/' . 'htdocs')) {
+                throw new \Exception('Please change document root to htdocs');
+            }
+
+            $separator = str_contains($currentDir, '/htdocs') ? '/' : '\\';
+            $ngsRoot = substr($currentDir, 0, strrpos($currentDir, $separator . 'htdocs'));
+
+            $this->define('NGS_ROOT', $ngsRoot);
+        }
+
+
 
         /**
          * Returns a singleton instance of this class.
@@ -70,135 +131,13 @@ namespace ngs {
          * @param string $module The module name to get instance for
          * @return self The singleton instance
          */
-        public static function getInstance(string $module = ''): self
+        public static function getInstance(): self
         {
-            if ($module === '') {
-                $module = '_default_';
+            if (!isset(self::$instance)) {
+                self::$instance = new self();
             }
 
-            if (!isset(self::$instance[$module])) {
-                self::$instance[$module] = new self();
-            }
-
-            return self::$instance[$module];
-        }
-
-        /**
-         * Initializes the NGS framework by loading configuration files.
-         *
-         * @return void
-         */
-        public function initialize(): void
-        {
-            $moduleConstantPath = realpath($this->getConfigDir() . '/constants.php');
-            if ($moduleConstantPath) {
-                require_once $moduleConstantPath;
-            }
-
-            $envConstantFile = realpath($this->getConfigDir() . '/constants_' . $this->getShortEnvironment() . '.php');
-            if ($envConstantFile) {
-                require_once $envConstantFile;
-            }
-
-            $moduleRoutesEngine = $this->getModulesRoutesEngine();
-            $parentModule = $moduleRoutesEngine->getParentModule();
-
-            if ($parentModule && isset($parentModule['ns'])) {
-                $_prefix = $parentModule['ns'];
-                $envConstantFile = realpath($this->getConfigDir($_prefix) . '/constants_' . $this->getShortEnvironment() . '.php');
-                if ($envConstantFile) {
-                    require_once $envConstantFile;
-                }
-            }
-
-            $this->getModulesRoutesEngine(true)->initialize();
-        }
-
-        /**
-         * Gets the value of a defined constant.
-         *
-         * @param string $key The key to get the value for
-         * @param string|null $module The module to get the value from
-         * @return mixed The value or null if not found
-         */
-        public function getDefinedValue(string $key, ?string $module = null): mixed
-        {
-            return $this->define[$key] ?? null;
-        }
-
-        /**
-         * Alias for getDefinedValue.
-         *
-         * @param string $key The key to get the value for
-         * @param string|null $module The module to get the value from
-         * @return mixed The value or null if not found
-         */
-        public function get(string $key, ?string $module = null): mixed
-        {
-            return $this->getDefinedValue($key);
-        }
-
-        /**
-         * Defines a value with the given key.
-         *
-         * @param string $key The key to define
-         * @param mixed $value The value to set
-         * @return void
-         */
-        public function define(string $key, mixed $value): void
-        {
-            $this->define[$key] = $value;
-        }
-
-        /**
-         * Checks if a key is defined.
-         *
-         * @param string $key The key to check
-         * @return bool True if the key is defined, false otherwise
-         */
-        public function defined(string $key): bool
-        {
-            return isset($this->define[$key]);
-        }
-
-        /**
-         * Gets the configuration for the specified prefix.
-         *
-         * @param string|null $prefix The prefix to get the configuration for
-         * @return mixed The configuration
-         * @throws DebugException If there's an error loading the configuration
-         */
-        public function getConfig(?string $prefix = null): mixed
-        {
-            if ($this->getModulesRoutesEngine()->getModuleNS() === null) {
-                return $this->getNgsConfig();
-            }
-
-            if ($prefix === null) {
-                $moduleRoutesEngine = $this->getModulesRoutesEngine();
-                $parentModule = $moduleRoutesEngine->getParentModule();
-
-                if ($parentModule && isset($parentModule['ns'])) {
-                    $_prefix = $parentModule['ns'];
-                } else {
-                    $_prefix = $moduleRoutesEngine->getModuleNS();
-                }
-            } else {
-                $_prefix = $prefix;
-            }
-
-            if (isset($this->config[$_prefix])) {
-                return $this->config[$_prefix];
-            }
-
-            $configPerEnvironment = $this->getConfigDir($_prefix) . '/config_' . $this->getShortEnvironment() . '.json';
-            $configContent = file_get_contents($configPerEnvironment);
-
-            if ($configContent === false) {
-                throw new DebugException(sprintf('Could not read configuration file: %s', $configPerEnvironment));
-            }
-
-            return $this->config[$_prefix] = json_decode($configContent);
+            return self::$instance;
         }
 
         /**
@@ -212,65 +151,7 @@ namespace ngs {
             return $this->getModulesRoutesEngine()->getRootDir($ns);
         }
 
-        /**
-         * Creates or retrieves an instance for the given configuration constant,
-         * and validates it against the expected class.
-         *
-         * @template T of object
-         * @param string $constantName Name of the configuration constant
-         * @param class-string<T> $expectedClass Fully qualified class name expected
-         * @param bool $forceNew Whether to force creation of a new instance
-         * @return T The instantiated and validated service
-         * @throws DebugException If the constant is missing, class cannot be instantiated,
-         *                        or the instance is not of the expected type
-         */
-        public function createDefinedInstance(string $constantName, string $expectedClass, bool $forceNew = false): object
-        {
-            // Reuse cached instance if available and not forced to recreate
-            if (!$forceNew && isset($this->instances[$constantName])) {
-                $instance = $this->instances[$constantName];
 
-                if (!$instance instanceof $expectedClass) {
-                    throw new DebugException(
-                        sprintf(
-                            'Cached instance for "%s" is not an instance of "%s".',
-                            $constantName,
-                            $expectedClass
-                        )
-                    );
-                }
-
-                return $instance;
-            }
-
-            // Look up the class name from constants
-            $className = $this->getDefinedValue($constantName);
-
-            if (!$className || !class_exists($className)) {
-                throw new DebugException(
-                    sprintf('Class "%s" for constant "%s" not found.', $className ?? 'null', $constantName)
-                );
-            }
-
-            // Instantiate and validate type
-            $instance = new $className();
-
-            if (!$instance instanceof $expectedClass) {
-                throw new DebugException(
-                    sprintf(
-                        'Instance of "%s" does not implement expected "%s" for constant "%s".',
-                        $className,
-                        $expectedClass,
-                        $constantName
-                    )
-                );
-            }
-
-            // Cache and return
-            $this->instances[$constantName] = $instance;
-
-            return $instance;
-        }
 
         /**
          * Gets a module instance.
@@ -292,9 +173,9 @@ namespace ngs {
          *
          * @param string|null $moduleName The name of the module
          * @param string $environment The environment
-         * @return object|string|null The loaded module
+         * @return object|null The loaded module
          */
-        private function loadModule(?string $moduleName = null, string $environment = ""): object|string|null
+        private function loadModule(?string $moduleName = null, string $environment = ""): ?object
         {
             if ($moduleName === null) {
                 return null;
@@ -306,8 +187,6 @@ namespace ngs {
                 return null;
             }
 
-            // This line seems to have a syntax error in the original code
-            // Fixing it to properly concatenate the namespace and module name
             $className = $namespace . '\\' . $moduleName . ($environment ? '\\' . $environment : '');
 
             if (!class_exists($className)) {
@@ -317,6 +196,138 @@ namespace ngs {
             return new $className();
         }
 
+        /**
+         * Loads configuration from the config file.
+         */
+        public function loadConfig(): void
+        {
+            $configFile = $this->getConfigFile();
+
+            // Load config file if it exists
+            if (file_exists($configFile)) {
+                $configContent = file_get_contents($configFile);
+                if ($configContent === false) {
+                    return;
+                }
+
+                $configs = json_decode($configContent, true);
+
+                if (is_array($configs)) {
+                    foreach ($configs as $key => $config) {
+                        $this->config[$key] = $config;
+                    }
+                }
+            }
+        }
+
+        /**
+         * Get the config file path.
+         *
+         * @param string $parentDir The parent directory
+         * @return string The path to the config file
+         */
+        public function getConfigFile(string $parentDir = ''): string
+        {
+            $configDir = $this->getConfigDir($parentDir);
+            $environmentContext = NgsEnvironmentContext::getInstance();
+
+            return $environmentContext->getConfigFilePath($configDir);
+        }
+
+        /**
+         * Gets the configuration directory.
+         *
+         * @param string $parentDir The parent directory
+         * @return string The configuration directory path
+         */
+        public function getConfigDir(string $parentDir = ''): string
+        {
+            return empty($parentDir) ? __DIR__ . '/conf' : $parentDir . '/conf';
+        }
+
+        /**
+         * Gets the configuration for the specified prefix.
+         *
+         * @param string|null $prefix The prefix to get the configuration for
+         * @return mixed The configuration or null if not found
+         */
+        public function getConfig(?string $prefix = null): mixed
+        {
+            if ($prefix === null) {
+                return $this->config;
+            }
+
+            return $this->config[$prefix] ?? null;
+        }
+
+        /**
+         * Loads event subscribers from configuration.
+         */
+        protected function loadEvents(): void
+        {
+            $subscribersFile = $this->getConfigDir($this->moduleDir) . '/event_subscribers.json';
+            $subscribers = [];
+
+            if (file_exists($subscribersFile)) {
+                $subscribersContent = file_get_contents($subscribersFile);
+                if ($subscribersContent === false) {
+                    return;
+                }
+
+                $subscribersList = json_decode($subscribersContent, true) ?? [];
+                $subscribers = array_values($subscribersList);
+            }
+
+            $this->subscribeToEvents($subscribers);
+        }
+
+        /**
+         * Subscribes to each subscriber's events.
+         *
+         * @param array $subscribers Array of subscriber class names
+         * @throws \Exception If a subscriber is invalid
+         * @throws \InvalidArgumentException If an event structure class is invalid
+         */
+        private function subscribeToEvents(array $subscribers): void
+        {
+            $eventManager = EventManager::getInstance();
+
+            foreach ($subscribers as $subscriber) {
+                if (!class_exists($subscriber)) {
+                    throw new \Exception('Subscriber class not found: ' . $subscriber);
+                }
+
+                /** @var AbstractEventSubscriber $subscriberObject */
+                $subscriberObject = new $subscriber();
+
+                if (!$subscriberObject instanceof AbstractEventSubscriber) {
+                    throw new \Exception('Invalid subscriber: ' . $subscriber);
+                }
+
+                $subscriptions = $subscriberObject->getSubscriptions();
+
+                foreach ($subscriptions as $eventStructClass => $handlerName) {
+                    /** @var AbstractEventStructure $eventStructExample */
+                    if (!is_a($eventStructClass, AbstractEventStructure::class, true)) {
+                        throw new \InvalidArgumentException('Invalid event structure class: ' . $eventStructClass);
+                    }
+
+                    // Use class-string type for static method call
+                    $eventStructExample = call_user_func([$eventStructClass, 'getEmptyInstance']);
+                    $availableParams = $eventStructExample->getAvailableVariables();
+
+                    if ($eventStructExample->isVisible() && !isset($this->events[$eventStructExample->getEventId()])) {
+                        $this->events[$eventStructExample->getEventId()] = [
+                            'name' => $eventStructExample->getEventName(),
+                            'bulk_is_available' => $eventStructExample->bulkIsAvailable(),
+                            'params' => $availableParams
+                        ];
+                    }
+
+                    $eventManager->subscribeToEvent($eventStructClass, $subscriberObject, $handlerName);
+                }
+            }
+        }
     }
 } // End of namespace ngs
 
@@ -324,16 +335,14 @@ namespace {
     /**
      * Returns the NGS instance.
      *
-     * @param string $module The module name
      * @return \ngs\NGS The NGS instance
      */
-    function NGS(string $module = ''): \ngs\NGS
+    function NGS(): \ngs\NGS
     {
-        return \ngs\NGS::getInstance($module);
+        return \ngs\NGS::getInstance();
     }
 
     if (getenv('SKIP_NGS_INIT') !== 'true') {
         require_once('system/NgsDefaultConstants.php');
-        NGS()->initialize();
     }
 }

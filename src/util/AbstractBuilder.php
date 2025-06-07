@@ -251,12 +251,7 @@ abstract class AbstractBuilder
 
     protected function getEnvironment(): string
     {
-        $envConstantValue = NGS()->get('ENVIRONMENT');
-        $currentEnvironment = 'production'; // Default
-        if ($envConstantValue === 'development' || $envConstantValue === 'staging') {
-            $currentEnvironment = $envConstantValue;
-        }
-        return $currentEnvironment;
+        return NgsEnvironmentContext::getInstance()->getEnvironment();
     }
 
     abstract protected function getItemDir($module);
