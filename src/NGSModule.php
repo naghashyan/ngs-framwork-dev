@@ -44,11 +44,23 @@ class NGSModule
             $constants = json_decode(file_get_contents($constantsFile), true);
 
             if (is_array($constants)) {
-                foreach ($constants as $key => $value) {
-                    //                    if (!defined($key)) {
-                    //                        define($key, $value);
-                    //                    }
-                    $this->constants[$key] = $value;
+                foreach ($constants as $section => $sectionValues) {
+                    if (is_array($sectionValues)) {
+                        // Process each section (constants, directories, classes)
+                        foreach ($sectionValues as $constName => $constValue) {
+                            // Check if there's an environment-specific value for this constant
+                            if (is_array($constValue) && isset($constValue[$this->environment])) {
+                                // Use the environment-specific value
+                                $this->constants[$constName] = $constValue[$this->environment];
+                            } else {
+                                // Use the default value
+                                $this->constants[$constName] = $constValue;
+                            }
+                        }
+                    } else {
+                        // Handle top-level constants (if any)
+                        $this->constants[$section] = $sectionValues;
+                    }
                 }
             }
         }
@@ -97,7 +109,9 @@ class NGSModule
 
         $constantsFileName = "/constants";
         if (!empty($this->environment)) {
-            $constantsFileName .= ("_" . $this->environment . "json");
+            $constantsFileName .= ("_" . $this->environment . ".json");
+        } else {
+            $constantsFileName .= ".json";
         }
 
         $configFile = $configDir . $constantsFileName;
