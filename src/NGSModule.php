@@ -13,6 +13,7 @@ class NGSModule
 {
     protected array $constants = [];
     protected string $moduleDir;
+    protected bool $isComposerPackage = false;
 
     /**
      * Cache for instances created by createDefinedInstance.
@@ -34,6 +35,8 @@ class NGSModule
     {
         if ($moduleDir !== null) {
             $this->moduleDir = $moduleDir;
+            // Determine if this is a Composer package by checking if it's in the vendor directory
+            $this->isComposerPackage = str_contains($moduleDir, '/vendor/');
         }
 
         $this->loadConstants($configReplacements, $overrideConstants, $parentConstants);
@@ -321,5 +324,25 @@ class NGSModule
         }
 
         return $value;
+    }
+
+    /**
+     * Gets the path to the module directory.
+     *
+     * @return string The module directory path
+     */
+    public function getPath(): string
+    {
+        return $this->moduleDir;
+    }
+
+    /**
+     * Checks if the module is a Composer package.
+     *
+     * @return bool True if the module is a Composer package, false otherwise
+     */
+    public function isComposerPackage(): bool
+    {
+        return $this->isComposerPackage;
     }
 }

@@ -112,6 +112,13 @@ namespace ngs {
         {
             $currentDir = getcwd();
 
+            // Check if we should bypass the document root check
+            if (getenv('SKIP_DOCUMENT_ROOT_CHECK') === 'true') {
+                // Set NGS_ROOT to the current directory
+                $this->define('NGS_ROOT', $currentDir);
+                return;
+            }
+
             if (!str_contains($currentDir, DIRECTORY_SEPARATOR . 'htdocs') && 
                 !str_contains($currentDir, '/' . 'htdocs')) {
                 throw new \Exception('Please change document root to htdocs');
@@ -156,44 +163,82 @@ namespace ngs {
         /**
          * Gets a module instance.
          *
-         * @param string|null $moduleName The name of the module
-         * @return object|null The module instance
+         * @param string $moduleName Name of the module directory or Composer package
+         * @return NGSModule The module instance
+         * @throws NgsException If the module cannot be found or loaded
          */
-        public function getModule(?string $moduleName = null): ?object
+        public function getModule(string $moduleName): NGSModule
         {
-            if (!isset($this->loadedModules[$moduleName])) {
-                $this->loadedModules[$moduleName] = $this->loadModule($moduleName);
+            // Check if module is already loaded
+            if (isset($this->loadedModules[$moduleName])) {
+                return $this->loadedModules[$moduleName];
             }
 
-            return $this->loadedModules[$moduleName];
+            // Load the module and cache the instance
+            $module = $this->loadModule($moduleName);
+            $this->loadedModules[$moduleName] = $module;
+
+            return $module;
         }
 
         /**
          * Loads a module.
          *
-         * @param string|null $moduleName The name of the module
-         * @param string $environment The environment
-         * @return object|null The loaded module
+         * @param string $moduleName Name of the module directory or Composer package
+         * @return NGSModule|null The module instance or null if not found
+         * @throws NgsException If the module cannot be found or loaded
          */
-        private function loadModule(?string $moduleName = null, string $environment = ""): ?object
+        private function loadModule(string $moduleName): ?NGSModule
         {
-            if ($moduleName === null) {
-                return null;
+            // Load modules configuration
+            $modulesConfigFile = $this->getDefinedValue('NGS_ROOT') . '/conf/modules.json';
+            if (!file_exists($modulesConfigFile)) {
+                throw new NgsException("Modules configuration file not found: {$modulesConfigFile}", 1);
             }
 
-            $namespace = preg_replace('/-/', '/', $moduleName, 1);
-
-            if ($namespace === null) {
-                return null;
+            $modulesConfig = json_decode(file_get_contents($modulesConfigFile), true);
+            if (!is_array($modulesConfig)) {
+                throw new NgsException("Invalid modules configuration format", 1);
             }
 
-            $className = $namespace . '\\' . $moduleName . ($environment ? '\\' . $environment : '');
+            // Default configuration section
+            $defaultConfig = $modulesConfig['default'] ?? [];
 
-            if (!class_exists($className)) {
-                return null;
+            // Determine if this is a Composer package or local module
+            $isComposerPackage = str_contains($moduleName, '/');
+            $modulePath = null;
+
+            if ($isComposerPackage) {
+                // Handle Composer package
+                $vendorDir = $this->getDefinedValue('NGS_ROOT') . '/vendor';
+                $packagePath = $vendorDir . '/' . $moduleName;
+
+                if (!is_dir($packagePath)) {
+                    throw new NgsException("Composer package not found: {$moduleName}", 1);
+                }
+
+                $modulePath = $packagePath;
+            } else {
+                // Handle local project module
+                $pathConfig = $defaultConfig['path'] ?? [];
+
+                if (isset($pathConfig[$moduleName]['dir'])) {
+                    // Module is explicitly defined in configuration
+                    $moduleDir = $pathConfig[$moduleName]['dir'];
+                    $modulePath = $this->getDefinedValue('NGS_ROOT') . '/modules/' . $moduleDir;
+                } else {
+                    // Use default module directory
+                    $defaultDir = $defaultConfig['default']['dir'] ?? $moduleName;
+                    $modulePath = $this->getDefinedValue('NGS_ROOT') . '/modules/' . $defaultDir;
+                }
+
+                if (!is_dir($modulePath)) {
+                    throw new NgsException("Module directory not found: {$modulePath}", 1);
+                }
             }
 
-            return new $className();
+            // Create the module instance
+            return new NGSModule($modulePath);
         }
 
         /**
@@ -292,7 +337,14 @@ namespace ngs {
         {
             $eventManager = EventManager::getInstance();
 
-            foreach ($subscribers as $subscriber) {
+            foreach ($subscribers as $subscriberElement) {
+                $subscriber = null;
+                if (is_array($subscriberElement) && isset($subscriberElement['class'])) {
+                    $subscriber = $subscriberElement["class"];
+                } else {
+                    throw new \Exception('Invalid subscriber format: ' . json_encode($subscriberElement));
+                }
+
                 if (!class_exists($subscriber)) {
                     throw new \Exception('Subscriber class not found: ' . $subscriber);
                 }
