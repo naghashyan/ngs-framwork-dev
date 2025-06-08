@@ -242,19 +242,6 @@ abstract class NGSDeprecated extends NGSModule
         return dirname(__DIR__, 2) . '/ngs-dashboards/src';
     }
 
-    /**
-     * @param String $ns
-     *
-     * @return String config dir path
-     * @deprecated
-     * this method do calculate and return config
-     * dir path by namespace
-     *
-     */
-    public function getConfigDir(string $ns = ''): ?string
-    {
-        return realpath($this->getModuleDirByNS($ns) . '/' . $this->get('CONF_DIR'));
-    }
 
     /**
      * @param String $ns

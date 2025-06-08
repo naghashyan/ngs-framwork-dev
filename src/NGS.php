@@ -128,6 +128,8 @@ namespace ngs {
             $ngsRoot = substr($currentDir, 0, strrpos($currentDir, $separator . 'htdocs'));
 
             $this->define('NGS_ROOT', $ngsRoot);
+
+            $this->moduleDir = $ngsRoot;
         }
 
 
@@ -271,23 +273,12 @@ namespace ngs {
          * @param string $parentDir The parent directory
          * @return string The path to the config file
          */
-        public function getConfigFile(string $parentDir = ''): string
+        public function getConfigFile(): string
         {
-            $configDir = $this->getConfigDir($parentDir);
+            $configDir = $this->getConfigDir();
             $environmentContext = NgsEnvironmentContext::getInstance();
 
             return $environmentContext->getConfigFilePath($configDir);
-        }
-
-        /**
-         * Gets the configuration directory.
-         *
-         * @param string $parentDir The parent directory
-         * @return string The configuration directory path
-         */
-        public function getConfigDir(string $parentDir = ''): string
-        {
-            return empty($parentDir) ? __DIR__ . '/conf' : $parentDir . '/conf';
         }
 
         /**

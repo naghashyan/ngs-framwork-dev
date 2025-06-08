@@ -137,15 +137,26 @@ class NGSModule
     /**
      * Get the constants file path.
      *
-     * @param string $parentDir The parent directory
+     * @param string $moduleDir The module directory
      * @return string The path to the constants file
      */
-    private function getConstantsFile(string $parentDir = ''): string
+    private function getConstantsFile(): string
     {
-        $configDir = $this->getConfigDir($parentDir);
+        $configDir = $this->getConfigDir();
         $environmentContext = NgsEnvironmentContext::getInstance();
 
         return $environmentContext->getConstantsFilePath($configDir);
+    }
+
+
+    /**
+     * Gets the configuration directory.
+     *
+     * @return string The configuration directory path
+     */
+    public function getConfigDir(): string
+    {
+        return $this->moduleDir . '/conf';
     }
 
     /**

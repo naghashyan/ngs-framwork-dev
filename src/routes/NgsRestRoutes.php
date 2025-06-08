@@ -53,7 +53,7 @@ class NgsRestRoutes extends NgsRoutes
         return $loadsArr;
     }
 
-    public function getRequestHttpMethod()
+    public function getRequestHttpMethod(): string
     {
         return $this->httpMethod;
     }
