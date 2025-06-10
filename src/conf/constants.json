@@ -1,0 +1,81 @@
+{
+  "constants": {
+    "VERSION": "1.0.0",
+    "NGSVERSION": "4.0.0",
+    "FRAMEWORK_NS": "ngs",
+    "DEFAULT_NS": "ngs",
+    "NGS_CMS_NS": "ngs-AdminTools",
+    "NGS_PROJECT_OWNER": "www-data",
+    "IM_TOKEN_COOKIE_KEY": "_im_token",
+    "ENVIRONMENT": {
+      "production": "production",
+      "development": "development",
+      "staging": "staging"
+    },
+    "JS_FRAMEWORK_ENABLE": true,
+    "SEND_HTTP_PUSH": true,
+    "NGS_ROOT": "",
+    "JS_BUILD_MODE": {
+      "production": "production",
+      "development": "development",
+      "staging": "staging"
+    },
+    "LESS_BUILD_MODE": {
+      "production": "production",
+      "development": "development",
+      "staging": "staging"
+    },
+    "SASS_BUILD_MODE": {
+      "production": "production",
+      "development": "development",
+      "staging": "staging"
+    },
+    "MODULES_ENABLE": true,
+    "NGS_ROUTS": "routes.json",
+    "NGS_ROUTS_ARRAY": "routes.json",
+    "NGS_MODULS_ROUTS": "modules.json",
+    "USE_SMARTY": true,
+    "BULK_UPDATE_LIMIT": 50
+  },
+  "directories": {
+    "CLASSES_DIR": "classes",
+    "PUBLIC_DIR": "htdocs",
+    "PUBLIC_OUTPUT_DIR": "out",
+    "WEB_DIR": "web",
+    "CONF_DIR": "conf",
+    "DATA_DIR": "data",
+    "TEMP_DIR": "temp",
+    "BIN_DIR": "bin",
+    "TEMPLATES_DIR": "templates",
+    "LOADS_DIR": "loads",
+    "ACTIONS_DIR": "actions",
+    "MODULES_DIR": "modules",
+    "CSS_DIR": "css",
+    "LESS_DIR": "less",
+    "SASS_DIR": "sass",
+    "JS_DIR": "js",
+    "SMARTY_CACHE_DIR": "cache",
+    "SMARTY_COMPILE_DIR": "compile"
+  },
+  "classes": {
+    "LOAD_MAPPER": "ngs\\routes\\NgsLoadMapper",
+    "SESSION_MANAGER": "ngs\\session\\NgsSessionManager",
+    "TEMPLATE_ENGINE": "ngs\\templater\\NgsTemplater",
+    "FILE_UTILS": "ngs\\util\\FileUtils",
+    "REQUEST_CONTEXT": "ngs\\util\\RequestContext",
+    "MODULES_ROUTES_ENGINE": "ngs\\routes\\NgsModuleRoutes",
+    "ROUTES_ENGINE": "ngs\\routes\\NgsRoutes",
+    "NGS_UTILS": "ngs\\util\\NgsUtils",
+    "NGS_MYSQL_PDO_DRIVER": "\\ngs\\dal\\connectors\\MysqlPDO",
+    "JS_BUILDER": "ngs\\util\\JsBuilderV2",
+    "CSS_BUILDER": "ngs\\util\\CssBuilder",
+    "LESS_BUILDER": "ngs\\util\\LessBuilder",
+    "SASS_BUILDER": "ngs\\util\\SassBuilder",
+    "LESS_ENGINE": "lib/less.php/Less.php",
+    "NGS_EXCEPTION_DEBUG": "ngs\\exceptions\\DebugException",
+    "NGS_EXCEPTION_INVALID_USER": "ngs\\exceptions\\InvalidUserException",
+    "NGS_EXCEPTION_NGS_ERROR": "ngs\\exceptions\\NgsErrorException",
+    "NGS_EXCEPTION_NO_ACCESS": "ngs\\exceptions\\NoAccessException",
+    "NGS_EXCEPTION_NOT_FOUND": "ngs\\exceptions\\NotFoundException"
+  }
+}

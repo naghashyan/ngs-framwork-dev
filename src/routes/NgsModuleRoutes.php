@@ -1,15 +1,13 @@
 <?php
-
 /**
- * default ngs modules routing class
- * this class by default used from dispacher
- * for matching url with modules routes
+ * Default NGS modules routing class
+ * This class is used by the dispatcher for matching URLs with module routes
  *
  * @author Levon Naghashyan <levon@naghashyan.com>
  * @site https://naghashyan.com
  * @year 2015-2023
  * @package ngs.framework.routes
- * @version 4.5.0
+ * @version 5.0.0
  *
  * This file is part of the NGS package.
  *
@@ -17,42 +15,108 @@
  *
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
- *
  */
 
 namespace ngs\routes;
 
 use ngs\exceptions\DebugException;
 
+/**
+ * Class NgsModuleRoutes - Handles module routing in the NGS framework
+ * 
+ * @package ngs\routes
+ */
 class NgsModuleRoutes
 {
+    /**
+     * Cached routes configuration
+     */
     private array $routes = [];
-    private array $shuffledRoutes = [];
-    private $defaultNS = null;
-    private $moduleArr = null;
-    private $modulesLists = null;
-    private string $dynContainer = 'dyn';
-    private $type = null;
-    private $ns = null;
-    private string $name = '';
-    private ?array $parentModule = null;
-    private $uri = null;
 
-    public function __construct()
+    /**
+     * Cached shuffled routes
+     */
+    private array $shuffledRoutes = [];
+
+    /**
+     * Default namespace
+     */
+    private ?string $defaultNS = null;
+
+    /**
+     * Current module array
+     */
+    private array $moduleArr = [];
+
+    /**
+     * List of all modules
+     */
+    private array $modulesLists = [];
+
+    /**
+     * Dynamic container name
+     */
+    private string $dynContainer = 'dyn';
+
+    /**
+     * Module type (domain, subdomain, path)
+     */
+    private string $type = 'domain';
+
+    /**
+     * Module namespace
+     */
+    private string $ns = 'ngs';
+
+    /**
+     * Module name
+     */
+    private string $name = '';
+
+    /**
+     * Parent module
+     */
+    private ?array $parentModule = null;
+
+    /**
+     * Module URI
+     */
+    private ?string $uri = null;
+
+    /**
+     * File system interface for accessing configuration files
+     */
+    private $fileSystem;
+
+    /**
+     * HTTP utilities
+     */
+    private $httpUtils;
+
+    /**
+     * Constructor
+     * 
+     * @param object|null $fileSystem File system interface
+     * @param object|null $httpUtils HTTP utilities
+     * @throws DebugException When module.json is not found
+     */
+    public function __construct($fileSystem = null, $httpUtils = null)
     {
+        $this->fileSystem = $fileSystem ?? NGS();
+        $this->httpUtils = $httpUtils ?? NGS()->getHttpUtils();
+
         $moduleArr = $this->getModule();
-        if ($moduleArr == null) {
-            //TODO debug excaptoin
-            return;
+        if (!$moduleArr) {
+            throw new DebugException('module.json not found please add file json into config folder');
         }
+
         $this->setModuleNS($moduleArr['ns']);
         $this->setModuleUri($moduleArr['uri']);
         $this->setModuleType($moduleArr['type']);
     }
 
-    public function initialize()
+    public function initialize(): void
     {
-        return true;
     }
 
     /**
@@ -63,7 +127,7 @@ class NgsModuleRoutes
      *
      * @return String
      */
-    protected function getDynContainer()
+    protected function getDynContainer(): string
     {
         return $this->dynContainer;
     }
@@ -72,16 +136,20 @@ class NgsModuleRoutes
      * read from file json routes
      * and set in private property for cache
      *
-     * @return Array
+     * @return json Array
      */
-    private function getRouteConfig()
+    private function getRouteConfig(): array
     {
         if (count($this->routes) == 0) {
-            $moduleRouteFile = realpath(NGS()->get('NGS_ROOT') . '/' . NGS()->get('CONF_DIR') . '/' . NGS()->get('NGS_MODULS_ROUTS'));
+            $moduleConfigFilePath = NGS()->get('NGS_ROOT') . '/' . NGS()->get('CONF_DIR') . '/' . NGS()->get('NGS_MODULS_ROUTS');
+            try {
+                $moduleRouteFile = realpath($moduleConfigFilePath);
+                $this->routes = json_decode(file_get_contents($moduleRouteFile), true);
+            } catch (\Exception $exception) {
+                throw new DebugException('module.json not found please add file json into ' . $moduleConfigFilePath);
+            }
 
-            $this->routes = json_decode(file_get_contents($moduleRouteFile), true);
         }
-
         return $this->routes;
     }
 
@@ -98,18 +166,18 @@ class NgsModuleRoutes
             return $this->shuffledRoutes;
         }
         $routes = $this->getRouteConfig();
-        $this->shuffledRoutes = [];
+        $this->shuffledRoutes = array();
         foreach ($routes as $domain => $route) {
             foreach ($route as $type => $routeItem) {
                 if ($type === 'default') {
-                    $this->shuffledRoutes[$routeItem['dir']] = ['path' => $routeItem['dir'], 'type' => $type, 'domain' => $domain];
+                    $this->shuffledRoutes[$routeItem['dir']] = array('path' => $routeItem['dir'], 'type' => $type, 'domain' => $domain);
                     continue;
                 }
                 foreach ($routeItem as $item) {
                     if (isset($item['dir'])) {
-                        $this->shuffledRoutes[$item['dir']] = ['path' => $item['dir'], 'type' => $type, 'domain' => $domain];
+                        $this->shuffledRoutes[$item['dir']] = array('path' => $item['dir'], 'type' => $type, 'domain' => $domain);
                     } elseif (isset($item['extend'])) {
-                        $this->shuffledRoutes[$item['extend']] = ['path' => $item['extend'], 'type' => $type, 'domain' => $domain];
+                        $this->shuffledRoutes[$item['extend']] = array('path' => $item['extend'], 'type' => $type, 'domain' => $domain);
                     }
                 }
             }
@@ -117,13 +185,12 @@ class NgsModuleRoutes
         return $this->shuffledRoutes;
     }
 
-    public function getDefaultNS()
+    public function getDefaultNS(): string
     {
         if ($this->defaultNS !== null) {
             return $this->defaultNS;
         }
         $routes = $this->getRouteConfig();
-
         if (isset($routes['default']['default'])) {
             $defaultModule = $routes['default']['default'];
             $defaultMatched = $this->getMatchedModule($defaultModule, '', 'default');
@@ -167,11 +234,11 @@ class NgsModuleRoutes
      * check module by name
      *
      *
-     * @param String $ns
+     * @param String $name
      *
      * @return true|false
      */
-    public function checkModuleByNS($ns)
+    public function checkModuleByNS(string $ns): bool
     {
         $routes = $this->getShuffledRoutes();
         if (isset($routes[$ns])) {
@@ -181,56 +248,119 @@ class NgsModuleRoutes
     }
 
     /**
-     * this method return pakcage and command from url
-     * check url if set dynamic container return manage using standart routing
-     * if not manage url using routes file if matched succsess return array if not false
-     * this method can be overrided from users for they custom routing scenarios
+     * Determines the current module based on the request
+     * 
+     * This method analyzes the request to determine which module should handle it.
+     * It checks the domain, subdomain, and URI to find the appropriate module.
      *
-     * @return array|false
+     * @return array Module information
      */
-    protected function getModule()
+    protected function getModule(): array
     {
-        if ($this->moduleArr != null) {
+        // Return cached result if available
+        if (!empty($this->moduleArr)) {
             return $this->moduleArr;
         }
-        $module = $this->getDefaultNS();
-        $domain = NGS()->getHttpUtils()->getHttpHost(true);
-        $parsedUrl = $domain ? parse_url($domain) : ['path' => ''];
 
-        $parsedUrl['path'] = $parsedUrl['path'] ?? '';
+        // Get domain information
+        $domain = $this->httpUtils->_getHttpHost(true);
 
-        $mainDomain = NGS()->getHttpUtils()->getMainDomain();
-        $modulePart = $this->getModulePartByDomain($mainDomain);
+        // Handle case when domain is not available
+        if (!$domain) {
+            return $this->handleNoDomain();
+        }
+
+        // Parse domain and get module configuration
+        $parsedUrl = parse_url($domain);
+        $mainDomain = $this->httpUtils->getMainDomain();
+        $moduleConfigArray = $this->getModulePartByDomain($mainDomain);
         $host = explode('.', $parsedUrl['path']);
+        $uri = $this->httpUtils->getRequestUri(true);
 
-        $uri = NGS()->getHttpUtils()->getRequestUri(true);
-        $this->moduleArr = $this->getModuleByURI($modulePart, $uri);
-
-        if ($this->moduleArr){
-            $this->setModuleName($this->moduleArr['uri']);
-            if (count($host) >= 3) {
-                $parentModule = $this->getModuleBySubDomain($modulePart, $host[0]);
-                if ($parentModule) {
-                    $this->setParentModule($parentModule);
-                }
-            }
-            return $this->moduleArr;
+        // Try to find module by URI
+        $moduleByUri = $this->getModuleByURI($moduleConfigArray, $uri);
+        if ($moduleByUri) {
+            return $this->handleModuleByUri($moduleByUri, $host, $moduleConfigArray);
         }
 
-      if (count($host) >= 3){
-            if ($this->moduleArr = $this->getModuleBySubDomain($modulePart, $host[0])){
-                $this->setModuleName($this->moduleArr['uri']);
-                return $this->moduleArr;
+        // Try to find module by subdomain
+        if (count($host) >= 3) {
+            $moduleBySubdomain = $this->getModuleBySubDomain($moduleConfigArray, $host[0]);
+            if ($moduleBySubdomain) {
+                return $this->handleModuleBySubdomain($moduleBySubdomain);
             }
         }
+
+        // Use default module as fallback
+        return $this->handleDefaultModule($moduleConfigArray, $uri);
+    }
+
+    /**
+     * Handles the case when no domain is available
+     * 
+     * @return array Default module information
+     */
+    private function handleNoDomain(): array
+    {
+        $uri = '';
+        $moduleConfigArray = $this->getModulePartByDomain(null);
         $this->setModuleName('default');
-        $this->moduleArr = $this->getMatchedModule($modulePart['default'], $uri, 'default');
+        $this->moduleArr = $this->getMatchedModule($moduleConfigArray['default'], $uri, 'default');
+        return $this->moduleArr;
+    }
 
+    /**
+     * Handles module resolution by URI
+     * 
+     * @param array $moduleByUri Module information from URI
+     * @param array $host Host parts
+     * @param array $moduleConfigArray Module configuration array
+     * @return array Module information
+     */
+    private function handleModuleByUri(array $moduleByUri, array $host, array $moduleConfigArray): array
+    {
+        $this->moduleArr = $moduleByUri;
+        $this->setModuleName($this->moduleArr['uri']);
+
+        // Check for parent module in subdomain
+        if (count($host) >= 3) {
+            $parentModule = $this->getModuleBySubDomain($moduleConfigArray, $host[0]);
+            if ($parentModule) {
+                $this->setParentModule($parentModule);
+            }
+        }
 
         return $this->moduleArr;
     }
 
-    private function getModulePartByDomain(?string $domain = null): ?array
+    /**
+     * Handles module resolution by subdomain
+     * 
+     * @param array $moduleBySubdomain Module information from subdomain
+     * @return array Module information
+     */
+    private function handleModuleBySubdomain(array $moduleBySubdomain): array
+    {
+        $this->moduleArr = $moduleBySubdomain;
+        $this->setModuleName($this->moduleArr['uri']);
+        return $this->moduleArr;
+    }
+
+    /**
+     * Handles fallback to default module
+     * 
+     * @param array $moduleConfigArray Module configuration array
+     * @param string $uri Request URI
+     * @return array Default module information
+     */
+    private function handleDefaultModule(array $moduleConfigArray, string $uri): array
+    {
+        $this->setModuleName('default');
+        $this->moduleArr = $this->getMatchedModule($moduleConfigArray['default'], $uri, 'default');
+        return $this->moduleArr;
+    }
+
+    private function getModulePartByDomain(?string $domain = null): array
     {
         $routes = $this->getRouteConfig();
         if (isset($routes[$domain])) {
@@ -261,12 +391,11 @@ class NgsModuleRoutes
     /**
      * return module by uri
      *
-     * @param $modulePart
-     * @param $uri
-     * @return array|null
-     * @throws DebugException
+     * @param String $domain
+     *
+     * @return string
      */
-    private function getModuleByURI(array $modulePart, string $uri): ?array
+    private function getModuleByURI(array $modulePart, string $uri): array
     {
         $matches = [];
         preg_match_all('/(\/([^\/\?]+))/', $uri, $matches);
@@ -275,14 +404,14 @@ class NgsModuleRoutes
             if ($matches[2][0] == $this->getDynContainer()) {
                 array_shift($matches[2]);
             }
-            if (isset($matches[2][0]) && isset($modulePart['path'][$matches[2][0]])) {
+            if (isset($modulePart['path'][$matches[2][0]])) {
                 return $this->getMatchedModule($modulePart['path'][$matches[2][0]], $matches[2][0], 'path');
-            } elseif (isset($matches[2][0]) && $matches[2][0] == $this->getDefaultNS()) {
+            } else if ($matches[2][0] == $this->getDefaultNS()) {
                 return ['ns' => $this->getDefaultNS(), 'uri' => $this->getDefaultNS(), 'type' => 'path'];
             }
         }
 
-        return null;
+        return [];
     }
 
     /**
@@ -337,7 +466,7 @@ class NgsModuleRoutes
      *
      * @return String
      */
-    public function getModuleType(): ?string
+    public function getModuleType(): string
     {
         return $this->type;
     }
@@ -397,57 +526,105 @@ class NgsModuleRoutes
      *
      * @return String
      */
-    public function getModuleName()
+    public function getModuleName(): string
     {
         return $this->name;
     }
 
     /**
-     * return all modules list
+     * Returns a list of all modules in the application
+     * 
+     * This method collects all modules from different types (subdomain, domain, path)
+     * and caches the result for future use.
      *
-     * @return array
+     * @return array List of all module namespaces
      */
-    public function getAllModules()
+    public function getAllModules(): array
     {
-        if ($this->modulesLists != null) {
+        // Return cached result if available
+        if (!empty($this->modulesLists)) {
             return $this->modulesLists;
         }
-        $this->modulesLists = [];
+
+        // Initialize empty list
+        $modulesList = [];
         $routes = $this->getRouteConfig();
-        foreach ($routes as $key => $value) {
-            $this->modulesLists = array_merge($this->modulesLists, $this->getModulesByType($routes, 'subdomain'));
-            $this->modulesLists = array_merge($this->modulesLists, $this->getModulesByType($routes, 'domain'));
-            $this->modulesLists = array_merge($this->modulesLists, $this->getModulesByType($routes, 'path'));
-            if (isset($value['default']) && isset($value['default']['dir'])) {
-                $this->modulesLists[] = $value['default']['dir'];
-            }
-        }
+
+        // Collect modules by type without using array_merge in a loop
+        $this->collectModulesByTypes($routes, $modulesList);
+
+        // Add default modules
+        $this->collectDefaultModules($routes, $modulesList);
+
+        // Cache and return result
+        $this->modulesLists = $modulesList;
         return $this->modulesLists;
     }
 
     /**
-     * return module list by type
-     *
-     * @return array
+     * Collects modules by types and adds them to the modules list
+     * 
+     * @param array $routes Routes configuration
+     * @param array &$modulesList List to populate with modules
+     * @return void
      */
-    private function getModulesByType($routes, $type)
+    private function collectModulesByTypes(array $routes, array &$modulesList): void
     {
-        $tmpArr = [];
-        $routes = $this->getRouteConfig();
-        if (isset($routes[$type])) {
-            foreach ($routes[$type] as $value) {
-                if (isset($value['dir'])) {
-                    $tmpArr[] = $value['dir'];
+        $moduleTypes = ['subdomain', 'domain', 'path'];
+
+        foreach ($moduleTypes as $type) {
+            if (isset($routes[$type])) {
+                foreach ($routes[$type] as $value) {
+                    if (isset($value['dir'])) {
+                        $modulesList[] = $value['dir'];
+                    }
                 }
             }
         }
-        return $tmpArr;
+    }
+
+    /**
+     * Collects default modules and adds them to the modules list
+     * 
+     * @param array $routes Routes configuration
+     * @param array &$modulesList List to populate with modules
+     * @return void
+     */
+    private function collectDefaultModules(array $routes, array &$modulesList): void
+    {
+        foreach ($routes as $value) {
+            if (isset($value['default'], $value['default']['dir'])) {
+                $modulesList[] = $value['default']['dir'];
+            }
+        }
+    }
+
+    /**
+     * Returns a list of modules of a specific type
+     * 
+     * @param array $routes Routes configuration
+     * @param string $type Module type (subdomain, domain, path)
+     * @return array List of module namespaces of the specified type
+     */
+    private function getModulesByType(array $routes, string $type): array
+    {
+        $modulesList = [];
+
+        if (isset($routes[$type])) {
+            foreach ($routes[$type] as $value) {
+                if (isset($value['dir'])) {
+                    $modulesList[] = $value['dir'];
+                }
+            }
+        }
+
+        return $modulesList;
     }
 
     /**
      * return module dir connedted with namespace
      *
-     * @return String|null
+     * @return String
      */
     public function getModuleNsByUri(string $uri): ?string
     {
@@ -468,7 +645,7 @@ class NgsModuleRoutes
         $this->uri = $uri;
     }
 
-    public function getModuleUri(): ?string
+    public function getModuleUri(): string
     {
         return $this->uri;
     }
@@ -476,9 +653,9 @@ class NgsModuleRoutes
     /**
      * @param $ns
      *
-     * @return string|null
+     * @return null
      */
-    public function getModuleUriByNS(string $ns): ?string
+    public function getModuleUriByNS(string $ns): ?array
     {
         $routes = $this->getShuffledRoutes();
         if (isset($routes[$ns])) {
@@ -518,56 +695,111 @@ class NgsModuleRoutes
     /**
      * detect if $ns is current module
      *
-     * @param string $ns
+     * @param string $namespace
      *
      * @return Boolean
      */
-    public function isCurrentModule(string $ns): bool
+    public function isCurrentModule(string $namespace): bool
     {
-        if ($this->getModuleNS() == $ns) {
+        if ($this->getModuleNS() == $namespace) {
             return true;
         }
         return false;
     }
 
     /**
-     * this method calculate dir conencted with module
+     * Calculates the root directory path for a module
+     * 
+     * This method determines the appropriate root directory for a module based on its namespace.
+     * It handles special cases like the default module, framework, and CMS modules.
      *
-     * @param string $ns
-     *
-     * @return string|null rootDir
+     * @param string $namespace Module namespace (empty string for current module)
+     * @return string|null Root directory path or null if not found
      */
-    public function getRootDir(string $ns = ''): ?string
+    public function getRootDir(string $namespace = ''): ?string
     {
-        if (($ns === '' && $this->getDefaultNS() == $this->getModuleNS()) || $this->getDefaultNS() == $ns) {
-            return NGS()->get('NGS_ROOT');
+        // Handle default module
+        if ($this->isDefaultModuleNamespace($namespace)) {
+            return $this->fileSystem->get('NGS_ROOT');
         }
-        if ($ns === NGS()->get('FRAMEWORK_NS')) {
-            return NGS()->getFrameworkDir();
+
+        // Handle framework module
+        if ($this->isFrameworkModule($namespace)) {
+            return $this->fileSystem->getFrameworkDir();
         }
-        if ($ns === NGS()->get('NGS_CMS_NS')) {
-            if ($cmsPath = NGS()->getNgsCmsDir()) {
-                return $cmsPath;
-            }
+
+        // Handle CMS module
+        if ($this->isCmsModule($namespace)) {
+            return $this->getCmsPath();
         }
-        if ($ns === NGS()->get('NGS_DASHBOARDS_NS')) {
-            if ($path = NGS()->getNgsDashboardsDir()) {
-                return $path;
-            }
-        }
-        if ($ns === '' && $this->getModuleNS() === NGS()->get('NGS_CMS_NS')) {
-            if ($cmsPath = NGS()->getNgsCmsDir()) {
-                return $cmsPath;
-            }
-        }
-        if ($ns === '' && $this->getModuleNS() === NGS()->get('NGS_DASHBOARDS_NS')) {
-            if ($cmsPath = NGS()->getNgsDashboardsDir()) {
-                return $cmsPath;
-            }
-        }
-        if ($ns === '') {
-            return realpath(NGS()->get('NGS_ROOT') . '/' . NGS()->get('MODULES_DIR') . '/' . $this->getModuleNS());
-        }
-        return realpath(NGS()->get('NGS_ROOT') . '/' . NGS()->get('MODULES_DIR') . '/' . $ns);
+
+        // Handle regular modules
+        return $this->getModulePath($namespace);
     }
+
+    /**
+     * Checks if the specified namespace is the default module
+     * 
+     * @param string $namespace Module namespace
+     * @return bool True if it's the default module
+     */
+    private function isDefaultModuleNamespace(string $namespace): bool
+    {
+        return ($namespace === '' && $this->getDefaultNS() == $this->getModuleNS()) || 
+               $this->getDefaultNS() == $namespace;
+    }
+
+    /**
+     * Checks if the specified namespace is the framework module
+     * 
+     * @param string $namespace Module namespace
+     * @return bool True if it's the framework module
+     */
+    private function isFrameworkModule(string $namespace): bool
+    {
+        return $namespace === $this->fileSystem->get('FRAMEWORK_NS');
+    }
+
+    /**
+     * Checks if the specified namespace is the CMS module
+     * 
+     * @param string $namespace Module namespace
+     * @return bool True if it's the CMS module
+     */
+    private function isCmsModule(string $namespace): bool
+    {
+        $cmsNs = $this->fileSystem->get('NGS_CMS_NS');
+        return ($namespace === $cmsNs) || 
+               ($namespace === '' && $this->getModuleNS() === $cmsNs);
+    }
+
+    /**
+     * Gets the CMS module path
+     * 
+     * @return string|null CMS path or null if not found
+     */
+    private function getCmsPath(): ?string
+    {
+        return $this->fileSystem->getNgsCmsDir();
+    }
+
+    /**
+     * Gets the path for a regular module
+     * 
+     * @param string $namespace Module namespace
+     * @return string|null Module path or null if not found
+     */
+    private function getModulePath(string $namespace): ?string
+    {
+        $rootPath = $this->fileSystem->get('NGS_ROOT');
+        $modulesDir = $this->fileSystem->get('MODULES_DIR');
+
+        if ($namespace === '') {
+            return realpath($rootPath . '/' . $modulesDir . '/' . $this->getModuleNS());
+        }
+
+        return realpath($rootPath . '/' . $modulesDir . '/' . $namespace);
+    }
+
+
 }

@@ -29,6 +29,7 @@ use ngs\exceptions\NgsErrorException;
 use ngs\exceptions\NoAccessException;
 use ngs\exceptions\NotFoundException;
 use ngs\exceptions\RedirectException;
+use ngs\routes\NgsRoutes;
 use ngs\util\NgsArgs;
 use ngs\util\NgsEnvironmentContext;
 
@@ -68,7 +69,7 @@ class Dispatcher
     /**
      * Manages matched routes and dispatches requests to appropriate handlers
      *
-     * @param array|null $routesArr Routes array from the router
+     * @param array|null $routesArr Routes array from the router, used for redirecting the requests
      *
      * @return void
      * @throws DebugException When a debug error occurs
@@ -79,20 +80,23 @@ class Dispatcher
         $subscribers = $this->eventManager->loadSubscribers();
         $this->eventManager->subscribeToEvents($subscribers);
         try {
+            /** @var NgsRoutes $routesEngine */
             $routesEngine = NGS()->createDefinedInstance('ROUTES_ENGINE', \ngs\routes\NgsRoutes::class);
             $requestContext = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class);
             $templateEngine = NGS()->createDefinedInstance('TEMPLATE_ENGINE', \ngs\templater\NgsTemplater::class);
 
+            //TODO: ZN: implement the routesArray as a class
             if ($routesArr === null) {
                 $routesArr = $routesEngine->getDynamicLoad($requestContext->getRequestUri());
             }
 
+            //TODO: MJ: for what is this?
             if (array_key_exists('file_url', $routesArr) && str_contains($routesArr['file_url'], 'js/ngs')) {
                 $routesArr['file_url'] = str_replace("js/ngs", "js/admin/ngs", $routesArr['file_url']);
             }
 
             if ($routesArr['matched'] === false) {
-                throw new NotFoundException('Load/Action Not found');
+                throw new NotFoundException('Request is Not found');
             }
 
             if (isset($routesArr['args'])) {
