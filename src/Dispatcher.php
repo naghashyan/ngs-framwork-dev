@@ -69,13 +69,13 @@ class Dispatcher
     /**
      * Manages matched routes and dispatches requests to appropriate handlers
      *
-     * @param array|null $routesArr Routes array from the router, used for redirecting the requests
+     * @param \ngs\routes\NgsRoute|null $route Route object from the router, used for redirecting the requests
      *
      * @return void
      * @throws DebugException When a debug error occurs
      * @throws \JsonException When JSON processing fails
      */
-    public function dispatch(?array $routesArr = null): void
+    public function dispatch(?\ngs\routes\NgsRoute $route = null): void
     {
         $subscribers = $this->eventManager->loadSubscribers();
         $this->eventManager->subscribeToEvents($subscribers);
@@ -86,48 +86,48 @@ class Dispatcher
             $templateEngine = NGS()->createDefinedInstance('TEMPLATE_ENGINE', \ngs\templater\NgsTemplater::class);
 
             //TODO: ZN: implement the routesArray as a class
-            if ($routesArr === null) {
-                $routesArr = $routesEngine->getDynamicLoad($requestContext->getRequestUri());
+            if ($route === null) {
+                $route = $routesEngine->getDynamicLoad($requestContext->getRequestUri());
             }
 
             //TODO: MJ: for what is this?
-            if (array_key_exists('file_url', $routesArr) && str_contains($routesArr['file_url'], 'js/ngs')) {
-                $routesArr['file_url'] = str_replace("js/ngs", "js/admin/ngs", $routesArr['file_url']);
+            if ($route->getFileUrl() !== null && str_contains($route->getFileUrl(), 'js/ngs')) {
+                $route->setFileUrl(str_replace("js/ngs", "js/admin/ngs", $route->getFileUrl()));
             }
 
-            if ($routesArr['matched'] === false) {
+            if ($route->isMatched() === false) {
                 throw new NotFoundException('Request is Not found');
             }
 
-            if (isset($routesArr['args'])) {
-                NgsArgs::getInstance()->setArgs($routesArr['args']);
+            if (!empty($route->getArgs())) {
+                NgsArgs::getInstance()->setArgs($route->getArgs());
             }
 
-            switch ($routesArr['type']) {
+            switch ($route->getType()) {
                 case 'load':
                     if (isset($_GET['ngsValidate']) && $_GET['ngsValidate'] === 'true') {
-                        $this->validate($routesArr['action']);
+                        $this->validate($route->getAction());
                     } elseif (isset(NGS()->args()->args()['ngsValidate']) && NGS()->args()->args()['ngsValidate']) {
-                        $this->validate($routesArr['action']);
+                        $this->validate($route->getAction());
                     } else {
-                        $this->loadPage($routesArr['action']);
+                        $this->loadPage($route->getAction());
                     }
                     break;
 
                 case 'api_load':
-                    $this->loadApiPage($routesArr);
+                    $this->loadApiPage($route);
                     // no break intentional - fall through to action case
 
                 case 'action':
-                    $this->doAction($routesArr['action']);
+                    $this->doAction($route->getAction());
                     break;
 
                 case 'api_action':
-                    $this->doApiAction($routesArr);
+                    $this->doApiAction($route);
                     exit;
 
                 case 'file':
-                    $this->streamStaticFile($routesArr);
+                    $this->streamStaticFile($route);
                     break;
             }
         } catch (DebugException $ex) {
@@ -137,14 +137,14 @@ class Dispatcher
                 return;
             }
 
-            $routesArr = $routesEngine->getNotFoundLoad();
-            if ($routesArr === null || $this->isRedirect === true) {
+            $route = $routesEngine->getNotFoundLoad();
+            if ($route === null || $this->isRedirect === true) {
                 echo '404';
                 exit;
             }
 
             $this->isRedirect = true;
-            $this->dispatch($routesArr);
+            $this->dispatch($route);
         } catch (RedirectException $ex) {
             $requestContext->redirect($ex->getRedirectTo());
         } catch (NotFoundException $ex) {
@@ -154,14 +154,14 @@ class Dispatcher
                     return;
                 }
 
-                $routesArr = $routesEngine->getNotFoundLoad();
-                if ($routesArr === null || $this->isRedirect === true) {
+                $route = $routesEngine->getNotFoundLoad();
+                if ($route === null || $this->isRedirect === true) {
                     echo '404';
                     exit;
                 }
 
                 $this->isRedirect = true;
-                $this->dispatch($routesArr);
+                $this->dispatch($route);
             } catch (\Throwable $exp) {
                 header($_SERVER["SERVER_PROTOCOL"] . " 404 Not Found", true, 404);
                 exit;
@@ -249,17 +249,17 @@ class Dispatcher
     /**
      * Handles API load requests
      *
-     * @param array $routesArr The routes array containing action and parameters
+     * @param \ngs\routes\NgsRoute $route The routes object containing action and parameters
      * 
      * @return void
      * @throws DebugException When the load class is not found
      * @throws InvalidUserException When user is invalid
      * @throws NoAccessException When access is denied
      */
-    public function loadApiPage(array $routesArr): void
+    public function loadApiPage(\ngs\routes\NgsRoute $route): void
     {
         try {
-            $action = $routesArr['action'];
+            $action = $route->getAction();
             $action = str_replace('-', '\\', $action);
 
             if (class_exists($action) === false) {
@@ -268,9 +268,9 @@ class Dispatcher
 
             /** @var NgsApiAction $loadObj */
             $loadObj = new $action();
-            $loadObj->setAction($routesArr['action_method']);
-            $loadObj->setRequestValidators($routesArr['request_params']);
-            $loadObj->setResponseValidators($routesArr['response_params']);
+            $loadObj->setAction($route->offsetGet('action_method'));
+            $loadObj->setRequestValidators($route->offsetGet('request_params'));
+            $loadObj->setResponseValidators($route->offsetGet('response_params'));
             $loadObj->initialize();
 
             if (!$this->validateRequest($loadObj)) {
@@ -416,17 +416,17 @@ class Dispatcher
     /**
      * Handles API action requests
      *
-     * @param array $routesArr The routes array containing action and parameters
+     * @param \ngs\routes\NgsRoute $route The routes object containing action and parameters
      * 
      * @return void
      * @throws DebugException When the action class is not found
      * @throws InvalidUserException When user is invalid
      * @throws NoAccessException When access is denied
      */
-    private function doApiAction(array $routesArr): void
+    private function doApiAction(\ngs\routes\NgsRoute $route): void
     {
         try {
-            $action = $routesArr['action'];
+            $action = $route->getAction();
             $action = str_replace('-', '\\', $action);
 
             if (class_exists($action) === false) {
@@ -434,9 +434,9 @@ class Dispatcher
             }
 
             $actionObj = new $action();
-            $actionObj->setAction($routesArr['action_method']);
-            $actionObj->setRequestValidators($routesArr['request_params']);
-            $actionObj->setResponseValidators($routesArr['response_params']);
+            $actionObj->setAction($route->offsetGet('action_method'));
+            $actionObj->setRequestValidators($route->offsetGet('request_params'));
+            $actionObj->setResponseValidators($route->offsetGet('response_params'));
             $actionObj->initialize();
 
             if (!$this->validateRequest($actionObj)) {
@@ -470,20 +470,20 @@ class Dispatcher
     /**
      * Streams a static file to the client
      *
-     * @param array $fileArr The file information array
+     * @param \ngs\routes\NgsRoute $route The file information object
      * 
      * @return void
      */
-    private function streamStaticFile(array $fileArr): void
+    private function streamStaticFile(\ngs\routes\NgsRoute $route): void
     {
-        $moduleDir = NGS()->getModuleDirByNS($fileArr['module']);
+        $moduleDir = NGS()->getModuleDirByNS($route->getModule());
         $publicDirForModule = realpath($moduleDir . '/' . NGS()->get('PUBLIC_DIR'));
-        $filePath = realpath($publicDirForModule . '/' . $fileArr['file_url']);
+        $filePath = realpath($publicDirForModule . '/' . $route->getFileUrl());
 
         if (file_exists($filePath)) {
             $streamer = NGS()->createDefinedInstance('FILE_UTILS', \ngs\util\FileUtils::class);
         } else {
-            switch ($fileArr['file_type']) {
+            switch ($route->getFileType()) {
                 case 'js':
                     $streamer = NGS()->createDefinedInstance('JS_BUILDER', \ngs\util\JsBuilderV2::class);
                     break;
@@ -506,7 +506,7 @@ class Dispatcher
             }
         }
 
-        $streamer->streamFile($fileArr['module'], $fileArr['file_url']);
+        $streamer->streamFile($route->getModule(), $route->getFileUrl());
     }
 
     /**

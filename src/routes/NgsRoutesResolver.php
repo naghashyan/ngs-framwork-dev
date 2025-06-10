@@ -57,7 +57,7 @@ class NgsRoutesResolver
     /**
      * Current route configuration
      */
-    private ?array $currentRoute = null;
+    private ?\ngs\routes\NgsRoute $currentRoute = null;
 
     /**
      * Constructor
@@ -155,13 +155,13 @@ class NgsRoutesResolver
      *
      * @param string $url The URL to process
      * @param bool $is404 Whether this is a 404 error handling request
-     * @return array|null Route information array or null if no route matched
+     * @return \ngs\routes\NgsRoute|null Route information or null if no route matched
      * @throws DebugException When a debug error occurs
      * @throws NotFoundException When no matching route is found
      */
-    public function getDynamicLoad(string $url, bool $is404 = false): ?array
+    public function getDynamicLoad(string $url, bool $is404 = false): ?\ngs\routes\NgsRoute
     {
-        $loadsArr = ['matched' => false];
+        $route = new \ngs\routes\NgsRoute(['matched' => false]);
 
         // Normalize URL
         $url = $this->normalizeUrl($url);
@@ -175,30 +175,30 @@ class NgsRoutesResolver
         // Process the route based on package type
         if ($package === $this->getDynContainer()) {
             // Handle dynamic container routing
-            $loadsArr = $this->handleDynamicContainerRouting($urlPartsArr);
+            $route = $this->handleDynamicContainerRouting($urlPartsArr);
         } else {
             // Handle regular routing
             if ($package === null) {
                 $package = 'default';
             }
 
-            $loadsArr = $this->getDynRoutesLoad($url, $package, $urlPartsArr, $is404, $staticFile);
+            $route = $this->getDynRoutesLoad($url, $package, $urlPartsArr, $is404, $staticFile);
         }
 
         // Process action type if route matched
-        if ($loadsArr['matched']) {
-            $loadsArr = $this->processMatchedAction($loadsArr);
+        if ($route->isMatched()) {
+            $route = $this->processMatchedAction($route);
         }
 
         // Handle static file if no route matched
-        if ($loadsArr['matched'] === false && $staticFile === true) {
-            $loadsArr = $this->handleStaticFile($matches, $urlMatches, $fileUrl);
-            $package = $loadsArr['module'];
+        if ($route->isMatched() === false && $staticFile === true) {
+            $route = $this->handleStaticFile($matches, $urlMatches, $fileUrl);
+            $package = $route->getModule();
         }
 
         $this->setPackage($package);
 
-        return $loadsArr;
+        return $route;
     }
 
     /**
@@ -259,9 +259,9 @@ class NgsRoutesResolver
      * Handles routing for URLs with dynamic container
      *
      * @param array $urlPartsArr URL parts array
-     * @return array Route information
+     * @return \ngs\routes\NgsRoute Route information
      */
-    private function handleDynamicContainerRouting(array $urlPartsArr): array
+    private function handleDynamicContainerRouting(array $urlPartsArr): \ngs\routes\NgsRoute
     {
         $package = array_shift($urlPartsArr);
 
@@ -275,16 +275,16 @@ class NgsRoutesResolver
     /**
      * Processes a matched action to determine its type
      *
-     * @param array $loadsArr Route information array
-     * @return array Updated route information with action type
+     * @param \ngs\routes\NgsRoute $route Route information
+     * @return \ngs\routes\NgsRoute Updated route information with action type
      */
-    private function processMatchedAction(array $loadsArr): array
+    private function processMatchedAction(\ngs\routes\NgsRoute $route): \ngs\routes\NgsRoute
     {
-        $actionArr = $this->getLoadORActionByAction($loadsArr['action']);
-        $loadsArr['type'] = $actionArr['type'];
-        $loadsArr['action'] = $actionArr['action'];
+        $actionArr = $this->getLoadORActionByAction($route->getAction());
+        $route->setType($actionArr['type']);
+        $route->setAction($actionArr['action']);
 
-        return $loadsArr;
+        return $route;
     }
 
     /**
@@ -293,9 +293,9 @@ class NgsRoutesResolver
      * @param array $matches Matches array
      * @param array $urlMatches URL matches array
      * @param string $fileUrl File URL
-     * @return array Static file route information
+     * @return \ngs\routes\NgsRoute Static file route information
      */
-    private function handleStaticFile(array $matches, array $urlMatches, string $fileUrl): array
+    private function handleStaticFile(array $matches, array $urlMatches, string $fileUrl): \ngs\routes\NgsRoute
     {
         if ($urlMatches[0] == strtolower(NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', \ngs\routes\NgsModuleResolver::class)->getDefaultNS())) {
             array_shift($urlMatches);
@@ -436,15 +436,17 @@ class NgsRoutesResolver
      *
      * @param string $action
      * @param array $route
-     * @return array
+     * @return \ngs\routes\NgsRoute
      */
-    protected function getMatchedRouteData(string $action, array $route): array
+    protected function getMatchedRouteData(string $action, array $route): \ngs\routes\NgsRoute
     {
-        return [
+        $routeData = [
           'action' => $action,
           'args' => $route['args'],
           'matched' => true
         ];
+
+        return new \ngs\routes\NgsRoute($routeData);
     }
 
     /**
@@ -457,9 +459,9 @@ class NgsRoutesResolver
      *
      * @param string|null $ns Namespace
      * @param array $urlPartsArr URL parts array
-     * @return array Route information
+     * @return \ngs\routes\NgsRoute Route information
      */
-    private function getStandardRoutes(?string $ns, array $urlPartsArr): array
+    private function getStandardRoutes(?string $ns, array $urlPartsArr): \ngs\routes\NgsRoute
     {
         // Extract command from URL parts
         $command = array_shift($urlPartsArr);
@@ -490,11 +492,11 @@ class NgsRoutesResolver
 
         // Set content load and return route information
         $this->setContentLoad($action);
-        return [
+        return new \ngs\routes\NgsRoute([
             'action' => $action, 
             'args' => $urlPartsArr, 
             'matched' => true
-        ];
+        ]);
     }
 
     /**
@@ -508,11 +510,11 @@ class NgsRoutesResolver
      * @param array $urlPartsArr URL parts array
      * @param bool $is404 Whether this is a 404 error handling request
      * @param bool $staticFile Whether this is a static file request
-     * @return array Route information
+     * @return \ngs\routes\NgsRoute Route information
      * @throws DebugException When a debug error occurs
      * @throws NotFoundException When no matching route is found
      */
-    private function getDynRoutesLoad(string $url, string $package, array $urlPartsArr, bool $is404 = false, bool $staticFile = false): array
+    private function getDynRoutesLoad(string $url, string $package, array $urlPartsArr, bool $is404 = false, bool $staticFile = false): \ngs\routes\NgsRoute
     {
         // Get routes configuration
         $routes = $this->getRouteConfig($package);
@@ -546,15 +548,15 @@ class NgsRoutesResolver
      * @param array $routes Routes configuration
      * @param string $package Package name
      * @param bool $is404 Whether this is a 404 error handling request
-     * @return array Route information
+     * @return \ngs\routes\NgsRoute Route information
      */
-    private function handleNonExistentPackage(array $routes, string $package, bool $is404): array
+    private function handleNonExistentPackage(array $routes, string $package, bool $is404): \ngs\routes\NgsRoute
     {
         if (isset($routes['default']['action'], $routes['default']['404']) && $is404 === true) {
-            return ['matched' => false, 'package' => '404'];
+            return new \ngs\routes\NgsRoute(['matched' => false, 'package' => '404']);
         }
 
-        return ['matched' => false];
+        return new \ngs\routes\NgsRoute(['matched' => false]);
     }
 
     /**
@@ -722,17 +724,17 @@ class NgsRoutesResolver
      * @param string $package Package name
      * @param array $urlPartsArr URL parts array
      * @param bool $staticFile Whether this is a static file request
-     * @return array Route information
+     * @return \ngs\routes\NgsRoute Route information
      * @throws NotFoundException When no matching route is found
      */
-    private function handleNoMatchingRoute(bool $dynRoute, string $package, array $urlPartsArr, bool $staticFile): array
+    private function handleNoMatchingRoute(bool $dynRoute, string $package, array $urlPartsArr, bool $staticFile): \ngs\routes\NgsRoute
     {
         if ($dynRoute === true) {
             return $this->getStandardRoutes($package, $urlPartsArr);
         }
 
         if ($staticFile) {
-            return ['matched' => false];
+            return new \ngs\routes\NgsRoute(['matched' => false]);
         }
 
         if (NGS()->getEnvironment() === 'development') {
@@ -981,31 +983,28 @@ class NgsRoutesResolver
      * @param array $matches Matches array from URL parsing
      * @param array $urlMatches URL matches array
      * @param string $fileUrl File URL
-     * @return array Static file route information
+     * @return \ngs\routes\NgsRoute Static file route information
      */
-    public function getStaticFileRoute(array $matches, array $urlMatches, string $fileUrl): array
+    public function getStaticFileRoute(array $matches, array $urlMatches, string $fileUrl): \ngs\routes\NgsRoute
     {
-        // Initialize route information
-        $loadsArr = [
-            'type' => 'file',
-            'file_type' => pathinfo(end($matches), PATHINFO_EXTENSION),
-            'matched' => true
-        ];
-
         // Determine package and file URL
         [$package, $fileUrl, $filePieces] = $this->determinePackageAndFileUrl($urlMatches, $fileUrl);
-
-        // Check for special file types (less/sass)
-        $loadsArr = $this->checkSpecialFileTypes($loadsArr, $filePieces);
 
         // Validate package
         $package = $this->validatePackage($package);
 
-        // Set final route information
-        $loadsArr['module'] = $package;
-        $loadsArr['file_url'] = $fileUrl;
+        // Create route object with initial properties
+        $route = new \ngs\routes\NgsRoute();
+        $route->setType('file');
+        $route->setFileType(pathinfo(end($matches), PATHINFO_EXTENSION));
+        $route->setMatched(true);
+        $route->setModule($package);
+        $route->setFileUrl($fileUrl);
 
-        return $loadsArr;
+        // Check for special file types (less/sass)
+        $route = $this->checkSpecialFileTypesInRoute($route, $filePieces);
+
+        return $route;
     }
 
     /**
@@ -1031,25 +1030,25 @@ class NgsRoutesResolver
     }
 
     /**
-     * Checks for special file types like less or sass
+     * Checks for special file types like less or sass in an NgsRoute object
      *
-     * @param array $loadsArr Route information array
+     * @param \ngs\routes\NgsRoute $route Route object
      * @param array $filePieces File path pieces
-     * @return array Updated route information
+     * @return \ngs\routes\NgsRoute Updated route object
      */
-    private function checkSpecialFileTypes(array $loadsArr, array $filePieces): array
+    private function checkSpecialFileTypesInRoute(\ngs\routes\NgsRoute $route, array $filePieces): \ngs\routes\NgsRoute
     {
         // Check if CSS is loaded from less/sass
-        if ($loadsArr['file_type'] === 'css') {
+        if ($route->getFileType() === 'css') {
             foreach ($filePieces as $urlPath) {
                 if ($urlPath === 'less' || $urlPath === 'sass') {
-                    $loadsArr['file_type'] = $urlPath;
+                    $route->setFileType($urlPath);
                     break;
                 }
             }
         }
 
-        return $loadsArr;
+        return $route;
     }
 
     /**
@@ -1144,20 +1143,24 @@ class NgsRoutesResolver
     /**
      * Sets the current route
      * 
-     * @param array $currentRoute Current route
+     * @param array|\ngs\routes\NgsRoute $currentRoute Current route
      * @return void
      */
-    private function setCurrentRoute(array $currentRoute): void
+    private function setCurrentRoute($currentRoute): void
     {
-        $this->currentRoute = $currentRoute;
+        if (is_array($currentRoute)) {
+            $this->currentRoute = new \ngs\routes\NgsRoute($currentRoute);
+        } else {
+            $this->currentRoute = $currentRoute;
+        }
     }
 
     /**
      * Gets the current route
      * 
-     * @return array|null Current route
+     * @return \ngs\routes\NgsRoute|null Current route
      */
-    public function getCurrentRoute(): ?array
+    public function getCurrentRoute(): ?\ngs\routes\NgsRoute
     {
         return $this->currentRoute;
     }
@@ -1168,9 +1171,9 @@ class NgsRoutesResolver
      * This method processes the current request URI as a 404 request
      * to determine the appropriate 404 handler.
      * 
-     * @return array|null 404 route information
+     * @return \ngs\routes\NgsRoute|null 404 route information
      */
-    public function getNotFoundLoad(): ?array
+    public function getNotFoundLoad(): ?\ngs\routes\NgsRoute
     {
         $requestContext = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class);
         return $this->getDynamicLoad($requestContext->getRequestUri(), true);

@@ -33,20 +33,26 @@ class NgsRestRoutes extends NgsRoutesResolver
     /**
      * this method return pakcage and command from url
      * check url if set dynamic container return manage using standart routing
-     * if not manage url using routes file if matched succsess return array if not false
+     * if not manage url using routes file if matched succsess return NgsRoute if not false
      * this method can be overrided from users for they custom routing scenarios
      *
      * @param String $url
      *
-     * @return array|null
+     * @return \ngs\routes\NgsRoute|null
      */
-    public function getDynamicLoad($url, $is404 = false): ?array
+    public function getDynamicLoad($url, $is404 = false): ?\ngs\routes\NgsRoute
     {
         $loadsArr = parent::getDynamicLoad($url);
-        if (isset($this->getCurrentRoute()["method"])) {
-            $this->setRequestHttpMethod($this->getCurrentRoute()["method"]);
+        $currentRoute = $this->getCurrentRoute();
+        if ($currentRoute !== null && $currentRoute->getMethod() !== null) {
+            $this->setRequestHttpMethod($currentRoute->getMethod());
         }
-        $loadsArr["method"] = $this->getRequestHttpMethod();
+
+        // Set the method on the route object
+        if ($loadsArr !== null) {
+            $loadsArr->setMethod($this->getRequestHttpMethod());
+        }
+
         if (strtolower($this->getRequestHttpMethod()) != strtolower($_SERVER["REQUEST_METHOD"])) {
             throw new DebugException("HTTP request is " . $_SERVER["REQUEST_METHOD"] . " but in routes set " . $this->getRequestHttpMethod());
         }
