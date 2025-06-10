@@ -22,11 +22,11 @@ namespace ngs\routes;
 use ngs\exceptions\DebugException;
 
 /**
- * Class NgsModuleRoutes - Handles module routing in the NGS framework
+ * Class NgsModuleResolver - Handles module routing in the NGS framework
  * 
  * @package ngs\routes
  */
-class NgsModuleRoutes
+class NgsModuleResolver
 {
     /**
      * Cached routes configuration
@@ -83,28 +83,14 @@ class NgsModuleRoutes
      */
     private ?string $uri = null;
 
-    /**
-     * File system interface for accessing configuration files
-     */
-    private $fileSystem;
-
-    /**
-     * HTTP utilities
-     */
-    private $httpUtils;
 
     /**
      * Constructor
      * 
-     * @param object|null $fileSystem File system interface
-     * @param object|null $httpUtils HTTP utilities
      * @throws DebugException When module.json is not found
      */
-    public function __construct($fileSystem = null, $httpUtils = null)
+    public function __construct()
     {
-        $this->fileSystem = $fileSystem ?? NGS();
-        $this->httpUtils = $httpUtils ?? NGS()->getHttpUtils();
-
         $moduleArr = $this->getModule();
         if (!$moduleArr) {
             throw new DebugException('module.json not found please add file json into config folder');
@@ -263,7 +249,7 @@ class NgsModuleRoutes
         }
 
         // Get domain information
-        $domain = $this->httpUtils->_getHttpHost(true);
+        $domain = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class)->getHttpHost(true);
 
         // Handle case when domain is not available
         if (!$domain) {
@@ -272,10 +258,11 @@ class NgsModuleRoutes
 
         // Parse domain and get module configuration
         $parsedUrl = parse_url($domain);
-        $mainDomain = $this->httpUtils->getMainDomain();
+        $mainDomain = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class)->getMainDomain();
         $moduleConfigArray = $this->getModulePartByDomain($mainDomain);
-        $host = explode('.', $parsedUrl['path']);
-        $uri = $this->httpUtils->getRequestUri(true);
+        $path = $parsedUrl['path'] ?? '';
+        $host = explode('.', $path);
+        $uri = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class)->getRequestUri(true);
 
         // Try to find module by URI
         $moduleByUri = $this->getModuleByURI($moduleConfigArray, $uri);
@@ -360,15 +347,32 @@ class NgsModuleRoutes
         return $this->moduleArr;
     }
 
+    /**
+     * Gets module configuration for a specific domain
+     *
+     * This method retrieves the module configuration for the specified domain.
+     * If no configuration exists for the domain, it falls back to the default configuration.
+     * If no default configuration exists, it throws an exception.
+     *
+     * @param string|null $domain Domain name to get configuration for
+     * @return array Module configuration array
+     * @throws DebugException When no default section is found in module.json
+     */
     private function getModulePartByDomain(?string $domain = null): array
     {
         $routes = $this->getRouteConfig();
-        if (isset($routes[$domain])) {
+
+        // Check if configuration exists for the specified domain
+        if ($domain !== null && isset($routes[$domain])) {
             return $routes[$domain];
         }
+
+        // Fall back to default configuration
         if (isset($routes['default'])) {
             return $routes['default'];
         }
+
+        // No default configuration found
         throw new DebugException('PLEASE ADD DEFAULT SECTION IN module.json');
     }
 
@@ -389,62 +393,127 @@ class NgsModuleRoutes
     }
 
     /**
-     * return module by uri
+     * Finds a module by URI path
      *
-     * @param String $domain
+     * This method extracts path segments from the URI and tries to match them
+     * against module configurations to find the appropriate module.
      *
-     * @return string
+     * @param array $modulePart Module configuration array
+     * @param string $uri Request URI to analyze
+     * @return array Module information array or empty array if no match found
      */
     private function getModuleByURI(array $modulePart, string $uri): array
     {
-        $matches = [];
-        preg_match_all('/(\/([^\/\?]+))/', $uri, $matches);
+        // Extract path segments from URI
+        $pathSegments = $this->extractPathSegmentsFromUri($uri);
 
-        if (is_array($matches[2]) && isset($matches[2][0])) {
-            if ($matches[2][0] == $this->getDynContainer()) {
-                array_shift($matches[2]);
+        if (empty($pathSegments)) {
+            return [];
+        }
+
+        // Check if first segment is dynamic container and remove it
+        if ($pathSegments[0] === $this->getDynContainer()) {
+            array_shift($pathSegments);
+
+            // If no segments left after removing dynamic container
+            if (empty($pathSegments)) {
+                return [];
             }
-            if (isset($modulePart['path'][$matches[2][0]])) {
-                return $this->getMatchedModule($modulePart['path'][$matches[2][0]], $matches[2][0], 'path');
-            } else if ($matches[2][0] == $this->getDefaultNS()) {
-                return ['ns' => $this->getDefaultNS(), 'uri' => $this->getDefaultNS(), 'type' => 'path'];
-            }
+        }
+
+        // Check if the first segment matches a path module
+        $firstSegment = $pathSegments[0];
+
+        if (isset($modulePart['path'][$firstSegment])) {
+            return $this->getMatchedModule($modulePart['path'][$firstSegment], $firstSegment, 'path');
+        }
+
+        // Check if it's the default namespace
+        if ($firstSegment === $this->getDefaultNS()) {
+            return [
+                'ns' => $this->getDefaultNS(), 
+                'uri' => $this->getDefaultNS(), 
+                'type' => 'path'
+            ];
         }
 
         return [];
     }
 
     /**
-     * @param $matchedArr
-     * @param $uri
-     * @param $type
-     * @return array
-     * @throws DebugException
+     * Extracts path segments from a URI
+     *
+     * @param string $uri URI to parse
+     * @return array Array of path segments
+     */
+    private function extractPathSegmentsFromUri(string $uri): array
+    {
+        $matches = [];
+        preg_match_all('/(\/([^\/\?]+))/', $uri, $matches);
+
+        if (isset($matches[2]) && is_array($matches[2]) && !empty($matches[2])) {
+            return $matches[2];
+        }
+
+        return [];
+    }
+
+    /**
+     * Creates a module information array from matched configuration
+     *
+     * This method extracts the namespace from the matched module configuration
+     * and creates a standardized module information array.
+     *
+     * @param array $matchedArr Matched module configuration array
+     * @param string $uri URI associated with this module
+     * @param string $type Module type (domain, subdomain, path)
+     * @return array Standardized module information array
+     * @throws DebugException When required configuration is missing
      */
     protected function getMatchedModule(array $matchedArr, string $uri, string $type): array
     {
-        $ns = null;
-        $module = null;
-        $extended = false;
-        if (isset($matchedArr['dir'])) {
-            $ns = $matchedArr['dir'];
-        } elseif (isset($matchedArr['namespace'])) {
-            $ns = $matchedArr['namespace'];
-        } elseif (isset($matchedArr['extend'])) {
-            $ns = $matchedArr['extend'];
-            if (isset($matchedArr['route_file'])) {
-                NGS()->define('NGS_MODULE_ROUTS', $matchedArr['route_file']);
-            }
-        } else {
-            throw new DebugException('PLEASE ADD DIR OR NAMESPACE SECTION IN module.json');
+        // Determine the namespace from configuration
+        $namespace = $this->extractNamespaceFromConfig($matchedArr);
+
+        // Return standardized module information
+        return [
+            'ns' => $namespace, 
+            'uri' => $uri, 
+            'type' => $type
+        ];
+    }
+
+    /**
+     * Extracts the namespace from module configuration
+     *
+     * @param array $config Module configuration array
+     * @return string Extracted namespace
+     * @throws DebugException When required configuration is missing
+     */
+    private function extractNamespaceFromConfig(array $config): string
+    {
+        // Check for 'dir' property (preferred)
+        if (isset($config['dir'])) {
+            return $config['dir'];
         }
-        /*TODO add global extend
-         if (isset($matchedArr['extend'])) {
-         $ns = $matchedArr['extend'];
-         $module = $matchedArr['module'];
-         $extended = true;
-         }*/
-        return ['ns' => $ns, 'uri' => $uri, 'type' => $type];
+
+        // Check for 'namespace' property (alternative)
+        if (isset($config['namespace'])) {
+            return $config['namespace'];
+        }
+
+        // Check for 'extend' property (extension)
+        if (isset($config['extend'])) {
+            // Set custom routes file if specified
+            if (isset($config['route_file'])) {
+                NGS()->define('NGS_MODULE_ROUTS', $config['route_file']);
+            }
+
+            return $config['extend'];
+        }
+
+        // No valid namespace found
+        throw new DebugException('PLEASE ADD DIR OR NAMESPACE SECTION IN module.json');
     }
 
     //Module interface implementation
@@ -665,19 +734,6 @@ class NgsModuleRoutes
     }
 
 
-    /**
-     * @param $ns
-     *
-     * @return bool
-     */
-    public function checkModulByNS(string $ns): bool
-    {
-        $routes = $this->getShuffledRoutes();
-        if (isset($routes[$ns])) {
-            return true;
-        }
-        return false;
-    }
 
     /**
      * detect if current module is default module
@@ -720,12 +776,12 @@ class NgsModuleRoutes
     {
         // Handle default module
         if ($this->isDefaultModuleNamespace($namespace)) {
-            return $this->fileSystem->get('NGS_ROOT');
+            return NGS()->get('NGS_ROOT');
         }
 
         // Handle framework module
         if ($this->isFrameworkModule($namespace)) {
-            return $this->fileSystem->getFrameworkDir();
+            return NGS()->getFrameworkDir();
         }
 
         // Handle CMS module
@@ -757,7 +813,7 @@ class NgsModuleRoutes
      */
     private function isFrameworkModule(string $namespace): bool
     {
-        return $namespace === $this->fileSystem->get('FRAMEWORK_NS');
+        return $namespace === NGS()->get('FRAMEWORK_NS');
     }
 
     /**
@@ -768,7 +824,7 @@ class NgsModuleRoutes
      */
     private function isCmsModule(string $namespace): bool
     {
-        $cmsNs = $this->fileSystem->get('NGS_CMS_NS');
+        $cmsNs = NGS()->get('NGS_CMS_NS');
         return ($namespace === $cmsNs) || 
                ($namespace === '' && $this->getModuleNS() === $cmsNs);
     }
@@ -780,7 +836,7 @@ class NgsModuleRoutes
      */
     private function getCmsPath(): ?string
     {
-        return $this->fileSystem->getNgsCmsDir();
+        return NGS()->getNgsCmsDir();
     }
 
     /**
@@ -791,8 +847,8 @@ class NgsModuleRoutes
      */
     private function getModulePath(string $namespace): ?string
     {
-        $rootPath = $this->fileSystem->get('NGS_ROOT');
-        $modulesDir = $this->fileSystem->get('MODULES_DIR');
+        $rootPath = NGS()->get('NGS_ROOT');
+        $modulesDir = NGS()->get('MODULES_DIR');
 
         if ($namespace === '') {
             return realpath($rootPath . '/' . $modulesDir . '/' . $this->getModuleNS());

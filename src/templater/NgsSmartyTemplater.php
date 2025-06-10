@@ -43,7 +43,7 @@ class NgsSmartyTemplater extends Smarty
      */
     public function __construct(bool $isHtml = true)
     {
-        $moduleRoutesEngine = NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', \ngs\routes\NgsModuleRoutes::class);
+        $moduleRoutesEngine = NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', \ngs\routes\NgsModuleResolver::class);
         parent::__construct();
         $this->assign('NGS_CMS_DIR', realpath(NGS()->getModuleDirByNS(NGS()->get('NGS_CMS_NS')) . '/' . NGS()->get('TEMPLATES_DIR')));
         $this->assign('ADMIN_DIR', realpath(NGS()->getModuleDirByNS('admin') . '/' . NGS()->get('TEMPLATES_DIR')));
@@ -118,7 +118,7 @@ class NgsSmartyTemplater extends Smarty
     public function nestLoad($params, $template)
     {
         $loadMapper = NGS()->createDefinedInstance('LOAD_MAPPER', \ngs\routes\NgsLoadMapper::class);
-        $routesEngine = NGS()->createDefinedInstance('ROUTES_ENGINE', \ngs\routes\NgsRoutes::class);
+        $routesEngine = NGS()->createDefinedInstance('ROUTES_ENGINE', \ngs\routes\NgsRoutesResolver::class);
         $sessionManager = NGS()->createDefinedInstance('SESSION_MANAGER', \ngs\session\AbstractSessionManager::class);
 
         if (!isset($params['action'])) {
@@ -206,8 +206,8 @@ class NgsSmartyTemplater extends Smarty
         $_output = $_tpl->display();
 
         if (NGS()->get('JS_FRAMEWORK_ENABLE')) {
-            $httpUtils = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class);
-            if (!$httpUtils->isAjaxRequest()) {
+            $requestContext = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class);
+            if (!$requestContext->isAjaxRequest()) {
                 $jsonParams = $nsValue['inc'][$params['ns']]['jsonParam'];
                 $parentLoad = $nsValue['inc'][$params['ns']]['parent'];
                 $jsString = '<script type="text/javascript">';
@@ -248,7 +248,7 @@ class NgsSmartyTemplater extends Smarty
      */
     public function NGS($params, $template)
     {
-        $httpUtils = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class);
+        $requestContext = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class);
         if (!isset($params['cmd'])) {
             trigger_error("NGS: missing 'cmd' parameter");
             return;
@@ -270,42 +270,42 @@ class NgsSmartyTemplater extends Smarty
                 } else {
                     $publicJsOutputDir = NGS()->get('PUBLIC_OUTPUT_DIR') . '/' . NGS()->get('JS_DIR');
                 }
-                return $httpUtils->getNgsStaticPath($ns, $protocol) . '/' . $publicJsOutputDir;
+                return $requestContext->getNgsStaticPath($ns, $protocol) . '/' . $publicJsOutputDir;
                 break;
             case 'get_js_out_dir':
                 $protocol = false;
                 if (isset($params['protocol']) && $params['protocol'] == true) {
                     $protocol = true;
                 }
-                return $httpUtils->getNgsStaticPath($ns, $protocol) . '/' . NGS()->get('PUBLIC_OUTPUT_DIR') . '/js';
+                return $requestContext->getNgsStaticPath($ns, $protocol) . '/' . NGS()->get('PUBLIC_OUTPUT_DIR') . '/js';
                 break;
             case 'get_libs_out_dir':
                 $protocol = false;
                 if (isset($params['protocol']) && $params['protocol'] == true) {
                     $protocol = true;
                 }
-                return $httpUtils->getNgsStaticPath($ns, $protocol) . '/libs';
+                return $requestContext->getNgsStaticPath($ns, $protocol) . '/libs';
                 break;
             case 'get_css_out_dir':
                 $protocol = false;
                 if (isset($params['protocol']) && $params['protocol'] == true) {
                     $protocol = true;
                 }
-                return $httpUtils->getNgsStaticPath($ns, $protocol) . '/' . NGS()->get('PUBLIC_OUTPUT_DIR') . '/css';
+                return $requestContext->getNgsStaticPath($ns, $protocol) . '/' . NGS()->get('PUBLIC_OUTPUT_DIR') . '/css';
                 break;
             case 'get_less_out_dir':
                 $protocol = false;
                 if (isset($params['protocol']) && $params['protocol'] == true) {
                     $protocol = true;
                 }
-                return $httpUtils->getNgsStaticPath($ns, $protocol) . '/' . NGS()->get('PUBLIC_OUTPUT_DIR') . '/less';
+                return $requestContext->getNgsStaticPath($ns, $protocol) . '/' . NGS()->get('PUBLIC_OUTPUT_DIR') . '/less';
                 break;
             case 'get_sass_out_dir':
                 $protocol = false;
                 if (isset($params['protocol']) && $params['protocol'] == true) {
                     $protocol = true;
                 }
-                return $httpUtils->getNgsStaticPath($ns, $protocol) . '/' . NGS()->get('PUBLIC_OUTPUT_DIR') . '/sass';
+                return $requestContext->getNgsStaticPath($ns, $protocol) . '/' . NGS()->get('PUBLIC_OUTPUT_DIR') . '/sass';
                 break;
             case 'get_template_dir':
                 return realpath(NGS()->getModuleDirByNS($ns) . '/' . NGS()->get('TEMPLATES_DIR'));
@@ -315,14 +315,14 @@ class NgsSmartyTemplater extends Smarty
                 if (isset($params['protocol']) && $params['protocol'] == true) {
                     $protocol = true;
                 }
-                return $httpUtils->getHttpHostByNs($ns, $protocol);
+                return $requestContext->getHttpHostByNs($ns, $protocol);
                 break;
             case 'get_host':
                 $protocol = false;
                 if (isset($params['protocol']) && $params['protocol'] == true) {
                     $protocol = true;
                 }
-                return $httpUtils->getHost();
+                return $requestContext->getHost();
                 break;
             case 'get_environment':
                 $environmentContext = NgsEnvironmentContext::getInstance();
@@ -333,7 +333,7 @@ class NgsSmartyTemplater extends Smarty
                 if (isset($params['protocol']) && $params['protocol'] == true) {
                     $protocol = true;
                 }
-                return $httpUtils->getNgsStaticPath($ns, $protocol);
+                return $requestContext->getNgsStaticPath($ns, $protocol);
                 break;
             case 'get_version':
                 return NGS()->get('VERSION');

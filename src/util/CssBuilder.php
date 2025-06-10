@@ -59,16 +59,16 @@ class CssBuilder extends AbstractBuilder
 
     protected function customBufferUpdates($buffer)
     {
-        $httpUtilsInst = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class);
-        $ngsPath = $httpUtilsInst->getHttpHost(true);
+        $requestContext = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class);
+        $ngsPath = $requestContext->getHttpHost(true);
 
-        $moduleRoutesEngineInst = NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', \ngs\routes\NgsModuleRoutes::class);
+        $moduleRoutesEngineInst = NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', \ngs\routes\NgsModuleResolver::class);
         $ngsModulePath = '';
         if ($moduleRoutesEngineInst->isDefaultModule()) {
-            $ngsModulePath = $httpUtilsInst->getHttpHost(true, false);
+            $ngsModulePath = $requestContext->getHttpHost(true, false);
         } else {
             $currentModuleNs = $moduleRoutesEngineInst->getModuleNS();
-            $ngsModulePath = $httpUtilsInst->getHttpHost(true, false) . '/' . $currentModuleNs;
+            $ngsModulePath = $requestContext->getHttpHost(true, false) . '/' . $currentModuleNs;
         }
 
         return str_replace(['@NGS_PATH', '@NGS_MODULE_PATH'], [$ngsPath, $ngsModulePath], $buffer);

@@ -72,16 +72,16 @@ namespace ngs\util {
                 $this->sassParser->setFormatter(Crunched::class);
             }
 
-            $httpUtilsForParser = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class);
-            $ngsPathForParser = $httpUtilsForParser->getHttpHost(true);
+            $requestContext = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class);
+            $ngsPathForParser = $requestContext->getHttpHost(true);
 
-            $moduleRoutesEngineForParser = NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', \ngs\routes\NgsModuleRoutes::class);
+            $moduleRoutesEngineForParser = NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', \ngs\routes\NgsModuleResolver::class);
             $ngsModulePathForParser = '';
             if ($moduleRoutesEngineForParser->isDefaultModule()) {
-                $ngsModulePathForParser = $httpUtilsForParser->getHttpHost(true, false);
+                $ngsModulePathForParser = $requestContext->getHttpHost(true, false);
             } else {
                 $currentModuleNsForParser = $moduleRoutesEngineForParser->getModuleNS();
-                $ngsModulePathForParser = $httpUtilsForParser->getHttpHost(true, false) . '/' . $currentModuleNsForParser;
+                $ngsModulePathForParser = $requestContext->getHttpHost(true, false) . '/' . $currentModuleNsForParser;
             }
             $this->sassParser->setVariables([
                 'NGS_PATH' => $ngsPathForParser,
@@ -109,7 +109,7 @@ namespace ngs\util {
             $sassStream = "";
             foreach ($files["files"] as $value) {
                 $modulePath = "";
-                $module = NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', \ngs\routes\NgsModuleRoutes::class)->getDefaultNS();
+                $module = NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', \ngs\routes\NgsModuleResolver::class)->getDefaultNS();
                 if ($value["module"] != null) {
                     $modulePath = $value["module"];
                     $module = $value["module"];

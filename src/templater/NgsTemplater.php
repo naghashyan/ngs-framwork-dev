@@ -190,7 +190,7 @@ class NgsTemplater extends AbstractTemplater
      */
     public function display(bool $fromExaption = false)
     {
-        $httpUtils = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class);
+        $requestContext = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class);
         $loadMapper = NGS()->createDefinedInstance('LOAD_MAPPER', \ngs\routes\NgsLoadMapper::class);
         $this->setNgsFromException($fromExaption);
         $this->beforeDisplay();
@@ -212,12 +212,12 @@ class NgsTemplater extends AbstractTemplater
             return;
         }
         $ext = pathinfo($this->getTemplate(), PATHINFO_EXTENSION);
-        if ($ext !== 'json' && (NGS()->get('JS_FRAMEWORK_ENABLE') && !$httpUtils->isAjaxRequest())) {
+        if ($ext !== 'json' && (NGS()->get('JS_FRAMEWORK_ENABLE') && !$requestContext->isAjaxRequest())) {
             $this->smarty->setCustomHeader($this->getCustomHeader());
             $this->displaySmarty();
             return;
         }
-        if (NGS()->get('JS_FRAMEWORK_ENABLE') && $httpUtils->isAjaxRequest()) {
+        if (NGS()->get('JS_FRAMEWORK_ENABLE') && $requestContext->isAjaxRequest()) {
             $params = [];
             $params['html'] = $this->smarty->fetch($this->getTemplate());
             $params['nl'] = $loadMapper->getNestedLoads();

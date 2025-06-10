@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace ngs;
 
 use Composer\Factory;
-use ngs\routes\NgsModuleRoutes;
+use ngs\routes\NgsModuleResolver;
 use ngs\exceptions\NgsException;
 use ngs\util\NgsEnvironmentContext;
 

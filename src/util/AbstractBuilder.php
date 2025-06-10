@@ -87,7 +87,7 @@ abstract class AbstractBuilder
      */
     protected function getBuilderArr($builders, $file = null)
     {
-        $moduleRoutesEngine = NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', \ngs\routes\NgsModuleRoutes::class);
+        $moduleRoutesEngine = NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', \ngs\routes\NgsModuleResolver::class);
         $tmpArr = [];
         foreach ($builders as $key => $value) {
             if (strpos($file, $value->output_file) === false) {

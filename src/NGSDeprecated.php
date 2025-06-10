@@ -29,7 +29,8 @@ use ngs\exceptions\NgsException;
 use ngs\util\NgsArgs;
 use ngs\util\NgsEnvironmentContext;
 
-require_once('routes/NgsModuleRoutes.php');
+require_once('routes/NgsModuleResolver.php');
+require_once('routes/NgsRoutesResolver.php');
 require_once('util/HttpUtils.php');
 
 abstract class NGSDeprecated extends NGSModule
@@ -486,7 +487,7 @@ abstract class NGSDeprecated extends NGSModule
      */
     public function getRoutesEngine()
     {
-        return $this->createDefinedInstance('ROUTES_ENGINE', \ngs\routes\NgsRoutes::class);
+        return $this->createDefinedInstance('ROUTES_ENGINE', \ngs\routes\NgsRoutesResolver::class);
     }
 
     /**
@@ -644,16 +645,16 @@ abstract class NGSDeprecated extends NGSModule
     /**
      * Returns the module routes engine, creating it if necessary.
      * @param bool $forceNew Create a fresh instance if true; otherwise reuse.
-     * @return \ngs\routes\NgsModuleRoutes
+     * @return \ngs\routes\NgsModuleResolver
      * @throws DebugException If the MODULES_ROUTES_ENGINE constant is missing or invalid.
      * @deprecated
      */
-    public function getModulesRoutesEngine(bool $forceNew = false): \ngs\routes\NgsModuleRoutes
+    public function getModulesRoutesEngine(bool $forceNew = false): \ngs\routes\NgsModuleResolver
     {
-        /** @var \ngs\routes\NgsModuleRoutes $engine */
+        /** @var \ngs\routes\NgsModuleResolver $engine */
         $engine = $this->createDefinedInstance(
             'MODULES_ROUTES_ENGINE',
-            \ngs\routes\NgsModuleRoutes::class,
+            \ngs\routes\NgsModuleResolver::class,
             $forceNew
         );
         return $engine;

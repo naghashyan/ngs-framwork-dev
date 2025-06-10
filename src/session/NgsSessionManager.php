@@ -39,14 +39,14 @@ class NgsSessionManager extends \ngs\session\AbstractSessionManager
      */
     public function setUser($user, $remember = false, $useDomain = true, $useSubdomain = false): void
     {
-        $httpUtils = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class);
+        $requestContext = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class);
         $sessionTimeout = $remember ? 2078842581 : null;
         $domain = false;
         if ($useDomain) {
             if ($useSubdomain) {
-                $domain = "." . $httpUtils->getHost();
+                $domain = "." . $requestContext->getHost();
             } else {
-                $domain = $httpUtils->getHost();
+                $domain = $requestContext->getHost();
             }
         }
         $cookieParams = $user->getCookieParams();

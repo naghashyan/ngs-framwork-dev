@@ -25,7 +25,7 @@ namespace ngs\routes;
 use ngs\exceptions\DebugException;
 use ngs\exceptions\NotFoundException;
 
-class NgsRestRoutes extends NgsRoutes
+class NgsRestRoutes extends NgsRoutesResolver
 {
     private $httpMethod = "get";
 

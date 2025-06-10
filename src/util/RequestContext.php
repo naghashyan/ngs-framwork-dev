@@ -96,7 +96,7 @@ class RequestContext
      */
     public function getHttpHostByNs($ns = "", $withProtocol = false)
     {
-        $moduleRoutesEngine = NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', \ngs\routes\NgsModuleRoutes::class);
+        $moduleRoutesEngine = NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', \ngs\routes\NgsModuleResolver::class);
         $httpHost = $this->getHttpHost(true, $withProtocol);
         if ($moduleRoutesEngine->getModuleType() === "path") {
             if ($ns == "") {
@@ -122,7 +122,7 @@ class RequestContext
      */
     public function getNgsStaticPath($ns = "", $withProtocol = false)
     {
-        $moduleRoutesEngine = NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', \ngs\routes\NgsModuleRoutes::class);
+        $moduleRoutesEngine = NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', \ngs\routes\NgsModuleResolver::class);
         $httpHost = $this->getHttpHost(true, $withProtocol);
         if ($moduleRoutesEngine->getModuleType() === "path") {
             if ($ns == "" || $moduleRoutesEngine->isCurrentModule($ns)) {
@@ -153,7 +153,7 @@ class RequestContext
         }
 
         if ($full === false) {
-            $moduleRoutesEngine = NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', \ngs\routes\NgsModuleRoutes::class);
+            $moduleRoutesEngine = NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', \ngs\routes\NgsModuleResolver::class);
             if($moduleRoutesEngine->getModuleType() == "path"){
                 $delim = "";
                 if (strpos($uri, $moduleRoutesEngine->getModuleUri() . "/") !== false) {
@@ -242,5 +242,18 @@ class RequestContext
             return $host[0];
         }
         return null;
+    }
+
+    /**
+     * Gets the current HTTP request method
+     * 
+     * @return string HTTP method (lowercase)
+     */
+    public function getRequestHttpMethod(): string
+    {
+        if (isset($_SERVER['REQUEST_METHOD'])) {
+            return strtolower($_SERVER['REQUEST_METHOD']);
+        }
+        return 'get';
     }
 }

@@ -9,7 +9,7 @@ namespace ngs {
     use ngs\event\EventManager;
     use ngs\event\structure\AbstractEventStructure;
     use ngs\event\subscriber\AbstractEventSubscriber;
-    use ngs\routes\NgsModuleRoutes;
+    use ngs\routes\NgsModuleResolver;
     use ngs\util\NgsEnvironmentContext;
 
     /**
@@ -131,6 +131,7 @@ namespace ngs {
 
             $this->moduleDir = $ngsRoot;
         }
+
 
 
 

@@ -56,16 +56,16 @@ class LessBuilder extends AbstractBuilder
         $this->lessParser = new \Less_Parser($options);
 
         // Prepare components for parser string
-        $httpUtilsForParser = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class);
-        $ngsPathForParser = $httpUtilsForParser->getHttpHost(true); // This is for @NGS_PATH
+        $requestContext = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class);
+        $ngsPathForParser = $requestContext->getHttpHost(true); // This is for @NGS_PATH
 
-        $moduleRoutesEngineForParser = NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', \ngs\routes\NgsModuleRoutes::class);
+        $moduleRoutesEngineForParser = NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', \ngs\routes\NgsModuleResolver::class);
         $ngsModulePathForParser = '';
         if ($moduleRoutesEngineForParser->isDefaultModule()) {
-            $ngsModulePathForParser = $httpUtilsForParser->getHttpHost(true, false);
+            $ngsModulePathForParser = $requestContext->getHttpHost(true, false);
         } else {
             $currentModuleNsForParser = $moduleRoutesEngineForParser->getModuleNS();
-            $ngsModulePathForParser = $httpUtilsForParser->getHttpHost(true, false) . '/' . $currentModuleNsForParser;
+            $ngsModulePathForParser = $requestContext->getHttpHost(true, false) . '/' . $currentModuleNsForParser;
         }
         $this->lessParser->parse('@NGS_PATH: \'' . $ngsPathForParser . '\';@NGS_MODULE_PATH: \'' . $ngsModulePathForParser . '\';');
         $this->setLessFiles($files);

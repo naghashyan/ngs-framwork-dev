@@ -23,11 +23,11 @@ use ngs\exceptions\DebugException;
 use ngs\exceptions\NotFoundException;
 
 /**
- * Class NgsRoutes - Handles routing in the NGS framework
+ * Class NgsRoutesResolver - Handles routing in the NGS framework
  * 
  * @package ngs\routes
  */
-class NgsRoutes
+class NgsRoutesResolver
 {
     /**
      * Cached routes configuration
@@ -60,32 +60,11 @@ class NgsRoutes
     private ?array $currentRoute = null;
 
     /**
-     * File system interface for accessing route files
-     */
-    private $fileSystem;
-
-    /**
-     * Module routes engine
-     */
-    private $moduleRoutesEngine;
-
-    /**
-     * HTTP utilities
-     */
-    private $httpUtils;
-
-    /**
      * Constructor
-     * 
-     * @param object|null $fileSystem File system interface
-     * @param object|null $moduleRoutesEngine Module routes engine
-     * @param object|null $httpUtils HTTP utilities
      */
-    public function __construct($fileSystem = null, $moduleRoutesEngine = null, $httpUtils = null)
+    public function __construct()
     {
-        $this->fileSystem = $fileSystem ?? NGS();
-        $this->moduleRoutesEngine = $moduleRoutesEngine ?? NGS()->getModulesRoutesEngine();
-        $this->httpUtils = $httpUtils ?? NGS()->getHttpUtils();
+        // No initialization needed as we'll use NGS() directly
     }
 
     /**
@@ -101,6 +80,16 @@ class NgsRoutes
     }
 
     /**
+     * Gets the routes directory path.
+     *
+     * @return string The routes directory path
+     */
+    public function getRoutesDir(): string
+    {
+        return NGS()->getConfigDir() . '/routes';
+    }
+
+    /**
      * Reads routes configuration from JSON file and caches it
      *
      * @param string|null $package Package name
@@ -109,24 +98,24 @@ class NgsRoutes
     protected function getRouteConfig(?string $package = null): ?array
     {
         if (!$package) {
-            $package = $this->fileSystem->get('NGS_ROUTS');
+            $package = NGS()->get('NGS_ROUTS');
         }
 
         if (isset($this->routes[$package]) && $this->routes !== null) {
             return $this->routes;
         }
 
-        $routFile = realpath($this->fileSystem->getRoutesDir() . '/' . $package . '.json');
+        $routFile = realpath($this->getRoutesDir() . '/' . $package . '.json');
 
         if (!$routFile || !file_exists($routFile)) {
-            $routFile = $this->fileSystem->getRoutesDir() . '/' . $this->fileSystem->get('NGS_ROUTS');
+            $routFile = $this->getRoutesDir() . '/' . NGS()->get('NGS_ROUTS');
         }
 
         if (file_exists($routFile)) {
             $this->routes = json_decode(file_get_contents($routFile), true);
 
-            if ($this->fileSystem->get('NGS_MODULE_ROUTS')) {
-                $moduleRoutFile = $this->fileSystem->getConfigDir() . '/' . $this->fileSystem->get('NGS_MODULE_ROUTS');
+            if (NGS()->get('NGS_MODULE_ROUTS')) {
+                $moduleRoutFile = NGS()->getConfigDir() . '/' . NGS()->get('NGS_MODULE_ROUTS');
                 $moduleRoutes = json_decode(file_get_contents($moduleRoutFile), true);
                 $this->routes = array_merge($this->routes, $moduleRoutes);
             }
@@ -192,6 +181,7 @@ class NgsRoutes
             if ($package === null) {
                 $package = 'default';
             }
+
             $loadsArr = $this->getDynRoutesLoad($url, $package, $urlPartsArr, $is404, $staticFile);
         }
 
@@ -219,7 +209,7 @@ class NgsRoutes
      */
     private function normalizeUrl(string $url): string
     {
-        if ($url[0] === '/') {
+        if (!empty($url) && $url[0] === '/') {
             return substr($url, 1);
         }
         return $url;
@@ -275,7 +265,7 @@ class NgsRoutes
     {
         $package = array_shift($urlPartsArr);
 
-        if ($package === $this->moduleRoutesEngine->getModuleNS()) {
+        if ($package === NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', \ngs\routes\NgsModuleResolver::class)->getModuleNS()) {
             $package = array_shift($urlPartsArr);
         }
 
@@ -307,7 +297,7 @@ class NgsRoutes
      */
     private function handleStaticFile(array $matches, array $urlMatches, string $fileUrl): array
     {
-        if ($urlMatches[0] == strtolower($this->moduleRoutesEngine->getDefaultNS())) {
+        if ($urlMatches[0] == strtolower(NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', \ngs\routes\NgsModuleResolver::class)->getDefaultNS())) {
             array_shift($urlMatches);
             $fileUrl = substr($fileUrl, strpos($fileUrl, '/') + 1);
         }
@@ -386,13 +376,13 @@ class NgsRoutes
         $classPrefix = '';
 
         foreach ($pathArr as $part) {
-            if ($part === $this->fileSystem->getActionPackage()) {
+            if ($part === NGS()->getActionPackage()) {
                 $actionType = 'action';
                 $classPrefix = 'Action';
                 break;
             }
 
-            if ($part === $this->fileSystem->getLoadsPackage()) {
+            if ($part === NGS()->getLoadsPackage()) {
                 $actionType = 'load';
                 $classPrefix = 'Load';
                 break;
@@ -483,12 +473,12 @@ class NgsRoutes
         }
 
         // Get module namespace and action package
-        $module = $this->moduleRoutesEngine->getModuleNS();
-        $actionPackage = $this->fileSystem->getLoadsPackage();
+        $module = NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', \ngs\routes\NgsModuleResolver::class)->getModuleNS();
+        $actionPackage = NGS()->getLoadsPackage();
 
         // Check if this is an action command
         if (strrpos($command, 'do_') !== false) {
-            $actionPackage = $this->fileSystem->getActionPackage();
+            $actionPackage = NGS()->getActionPackage();
         }
 
         // Build the action string
@@ -527,20 +517,20 @@ class NgsRoutes
         // Get routes configuration
         $routes = $this->getRouteConfig($package);
 
-        // Check if package exists in routes
-        if (!isset($routes[$package])) {
-            return $this->handleNonExistentPackage($routes, $package, $is404);
+        // Check if routes is null or package doesn't exist in routes
+        if ($routes === null || !isset($routes[$package])) {
+            return $this->handleNonExistentPackage($routes ?? [], $package, $is404);
         }
 
         // Get matched routes array
         $matchedRoutesArr = $this->getMatchedRoutesArray($routes, $package);
 
         // Find matching route
-        [$foundRoute, $args, $dynRoute] = $this->findMatchingRoute($matchedRoutesArr, $urlPartsArr);
+        [$foundRoute, $args, $isDynamicRoute] = $this->findMatchingRoute($matchedRoutesArr, $urlPartsArr);
 
         // Handle case when no matching route is found
         if ($args === null && !isset($foundRoute['action'])) {
-            return $this->handleNoMatchingRoute($dynRoute, $package, $urlPartsArr, $staticFile);
+            return $this->handleNoMatchingRoute($isDynamicRoute, $package, $urlPartsArr, $staticFile);
         }
 
         // Process the found route
@@ -592,22 +582,25 @@ class NgsRoutes
      *
      * @param array $matchedRoutesArr Matched routes array
      * @param array $urlPartsArr URL parts array
-     * @return array Array containing [foundRoute, args, dynRoute]
+     * @return array Array containing [foundRoute, args, isDynamicRoute]
      */
     private function findMatchingRoute(array $matchedRoutesArr, array $urlPartsArr): array
     {
-        $dynRoute = false;
+        $isDynamicRoute = false;
         $args = null;
         $foundRoute = [];
 
         foreach ($matchedRoutesArr as $route) {
+            // Reset foundRoute for each iteration
             $foundRoute = [];
 
             // Handle default routes
             if (isset($route['default'])) {
-                $result = $this->handleDefaultRoute($route, $dynRoute);
+                $result = $this->processDefaultRoute($route);
                 if ($result !== null) {
-                    [$foundRoute, $dynRoute, $shouldContinue] = $result;
+                    [$foundRoute, $routeIsDynamic, $shouldContinue] = $result;
+                    $isDynamicRoute = $routeIsDynamic;
+
                     if ($shouldContinue) {
                         continue;
                     }
@@ -615,33 +608,90 @@ class NgsRoutes
                 }
             }
 
-            // Check HTTP method
-            if (isset($route['method']) && strtolower($route['method']) !== strtolower($this->getRequestHttpMethod())) {
+            // Skip if HTTP method doesn't match
+            if (!$this->isHttpMethodMatching($route)) {
                 continue;
             }
 
             // Try to match the route
-            $foundRoute = $route;
-            $args = $this->getMatchedRoute($urlPartsArr, $foundRoute);
-
-            // Initialize args if not set
-            if (!isset($foundRoute['args'])) {
-                $foundRoute['args'] = [];
-            }
-
-            // If route matched, merge args and break
-            if ($args !== null && is_array($args)) {
-                $foundRoute['args'] = array_merge($foundRoute['args'], $args);
+            $matchResult = $this->tryMatchRoute($route, $urlPartsArr);
+            if ($matchResult['matched']) {
+                $foundRoute = $matchResult['route'];
+                $args = $matchResult['args'];
                 break;
-            }
-
-            // If action is set, unset it for the next iteration
-            if (isset($foundRoute['action'])) {
-                unset($foundRoute['action']);
             }
         }
 
-        return [$foundRoute, $args, $dynRoute];
+        return [$foundRoute, $args, $isDynamicRoute];
+    }
+
+    /**
+     * Processes a default route configuration
+     *
+     * @param array $route Route configuration
+     * @return array|null Array containing [foundRoute, isDynamicRoute, shouldContinue] or null
+     */
+    private function processDefaultRoute(array $route): ?array
+    {
+        if ($route['default'] === 'dyn') {
+            return [[], true, true];
+        }
+
+        if (isset($route['default']['action'], $route['default']['404']) && isset($_GET['is404']) && $_GET['is404'] === true) {
+            return [$route['default']['404'], false, false];
+        }
+
+        return [$route['default'], false, false];
+    }
+
+    /**
+     * Checks if the route's HTTP method matches the current request method
+     *
+     * @param array $route Route configuration
+     * @return bool True if the method matches or no method is specified
+     */
+    private function isHttpMethodMatching(array $route): bool
+    {
+        if (!isset($route['method'])) {
+            return true;
+        }
+
+        $requestMethod = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class)->getRequestHttpMethod();
+        return strtolower($route['method']) === strtolower($requestMethod);
+    }
+
+    /**
+     * Attempts to match a route against URL parts
+     *
+     * @param array $route Route configuration
+     * @param array $urlPartsArr URL parts array
+     * @return array Match result with 'matched', 'route', and 'args' keys
+     */
+    private function tryMatchRoute(array $route, array $urlPartsArr): array
+    {
+        $foundRoute = $route;
+        $args = $this->getMatchedRoute($urlPartsArr, $foundRoute);
+
+        // Initialize args if not set
+        if (!isset($foundRoute['args'])) {
+            $foundRoute['args'] = [];
+        }
+
+        // If route matched, merge args
+        if ($args !== null && is_array($args)) {
+            $foundRoute['args'] = array_merge($foundRoute['args'], $args);
+            return [
+                'matched' => true,
+                'route' => $foundRoute,
+                'args' => $args
+            ];
+        }
+
+        return [
+            'matched' => false,
+            'route' => [],
+            'args' => null
+        ];
     }
 
     /**
@@ -685,7 +735,7 @@ class NgsRoutes
             return ['matched' => false];
         }
 
-        if ($this->fileSystem->getEnvironment() === 'development') {
+        if (NGS()->getEnvironment() === 'development') {
             $this->onNoMatchedRoutes();
         }
 
@@ -734,14 +784,15 @@ class NgsRoutes
     private function determineActionNamespace(array $foundRoute): string
     {
         $actionType = substr($foundRoute['action'], 0, strpos($foundRoute['action'], '.'));
+        $moduleRoutesEngine = NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', \ngs\routes\NgsModuleResolver::class);
 
-        if ($this->moduleRoutesEngine->checkModulByNS($actionType)) {
+        if ($moduleRoutesEngine->checkModuleByNS($actionType)) {
             $actionNS = $actionType;
             $foundRoute['action'] = substr($foundRoute['action'], strpos($foundRoute['action'], '.') + 1);
         } else if (isset($foundRoute['namespace'])) {
             $actionNS = $foundRoute['namespace'];
         } else {
-            $actionNS = $this->moduleRoutesEngine->getModuleNS();
+            $actionNS = $moduleRoutesEngine->getModuleNS();
         }
 
         return $actionNS;
@@ -862,7 +913,7 @@ class NgsRoutes
             if (strpos($routeUrlExp, ':' . $item) === false) {
                 throw new DebugException(
                     'Constraints and route parameters do not match. Please check in ' . 
-                    $this->fileSystem->get('NGS_ROUTS') . ' in this route section: ' . $route
+                    NGS()->get('NGS_ROUTS') . ' in this route section: ' . $route
                 );
             }
 
@@ -967,8 +1018,9 @@ class NgsRoutes
     private function determinePackageAndFileUrl(array $urlMatches, string $fileUrl): array
     {
         $filePieces = $urlMatches;
+        $moduleRoutesEngine = NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', \ngs\routes\NgsModuleResolver::class);
 
-        if ($this->moduleRoutesEngine->checkModuleByNS($filePieces[0])) {
+        if ($moduleRoutesEngine->checkModuleByNS($filePieces[0])) {
             $package = array_shift($filePieces);
             $fileUrl = implode('/', $filePieces);
         } else {
@@ -1008,9 +1060,11 @@ class NgsRoutes
      */
     private function validatePackage(string $package): string
     {
-        if (!$this->moduleRoutesEngine->checkModuleByNS($package) ||
-            $this->moduleRoutesEngine->getModuleType() === 'path') {
-            return $this->moduleRoutesEngine->getModuleNS();
+        $moduleRoutesEngine = NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', \ngs\routes\NgsModuleResolver::class);
+
+        if (!$moduleRoutesEngine->checkModuleByNS($package) ||
+            $moduleRoutesEngine->getModuleType() === 'path') {
+            return $moduleRoutesEngine->getModuleNS();
         }
 
         return $package;
@@ -1028,9 +1082,11 @@ class NgsRoutes
      */
     private function setNestedRoutes(array $nestedLoads, string $package): void
     {
+        $moduleRoutesEngine = NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', \ngs\routes\NgsModuleResolver::class);
+
         foreach ($nestedLoads as $key => $value) {
             // Determine action namespace
-            $actionNS = $value['namespace'] ?? $this->moduleRoutesEngine->getModuleNS();
+            $actionNS = $value['namespace'] ?? $moduleRoutesEngine->getModuleNS();
 
             // Store original action as package
             $value['package'] = $value['action'];
@@ -1116,20 +1172,9 @@ class NgsRoutes
      */
     public function getNotFoundLoad(): ?array
     {
-        return $this->getDynamicLoad($this->httpUtils->getRequestUri(), true);
+        $requestContext = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class);
+        return $this->getDynamicLoad($requestContext->getRequestUri(), true);
     }
 
-    /**
-     * Gets the current HTTP request method
-     * 
-     * @return string HTTP method (lowercase)
-     */
-    protected function getRequestHttpMethod(): string
-    {
-        if (isset($_SERVER['REQUEST_METHOD'])) {
-            return strtolower($_SERVER['REQUEST_METHOD']);
-        }
-        return 'get';
-    }
 
 }

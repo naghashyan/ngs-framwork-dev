@@ -29,7 +29,7 @@ use ngs\exceptions\NgsErrorException;
 use ngs\exceptions\NoAccessException;
 use ngs\exceptions\NotFoundException;
 use ngs\exceptions\RedirectException;
-use ngs\routes\NgsRoutes;
+use ngs\routes\NgsRoutesResolver;
 use ngs\util\NgsArgs;
 use ngs\util\NgsEnvironmentContext;
 
@@ -80,8 +80,8 @@ class Dispatcher
         $subscribers = $this->eventManager->loadSubscribers();
         $this->eventManager->subscribeToEvents($subscribers);
         try {
-            /** @var NgsRoutes $routesEngine */
-            $routesEngine = NGS()->createDefinedInstance('ROUTES_ENGINE', \ngs\routes\NgsRoutes::class);
+            /** @var NgsRoutesResolver $routesEngine */
+        $routesEngine = NGS()->createDefinedInstance('ROUTES_ENGINE', \ngs\routes\NgsRoutesResolver::class);
             $requestContext = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class);
             $templateEngine = NGS()->createDefinedInstance('TEMPLATE_ENGINE', \ngs\templater\NgsTemplater::class);
 
@@ -217,7 +217,7 @@ class Dispatcher
                 $loadObj->onNoAccess();
             }
 
-            $routesEngine = NGS()->createDefinedInstance('ROUTES_ENGINE', \ngs\routes\NgsRoutes::class);
+            $routesEngine = NGS()->createDefinedInstance('ROUTES_ENGINE', \ngs\routes\NgsRoutesResolver::class);
             $contentLoad = $routesEngine->getContentLoad();
             $loadObj->setLoadName($contentLoad);
             $loadObj->service();
@@ -338,7 +338,7 @@ class Dispatcher
                 $loadObj->onNoAccess();
             }
 
-            $routesEngine = NGS()->createDefinedInstance('ROUTES_ENGINE', \ngs\routes\NgsRoutes::class);
+            $routesEngine = NGS()->createDefinedInstance('ROUTES_ENGINE', \ngs\routes\NgsRoutesResolver::class);
             $contentLoad = $routesEngine->getContentLoad();
             $loadObj->setLoadName($contentLoad);
             $loadObj->validate();
@@ -519,12 +519,12 @@ class Dispatcher
      */
     private function handleInvalidUserAndNoAccessException($ex): void
     {
-        $httpUtils = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class);
+        $requestContext = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class);
         $templateEngine = NGS()->createDefinedInstance('TEMPLATE_ENGINE', \ngs\templater\NgsTemplater::class);
 
         // For non-AJAX requests, redirect to the specified URL
-        if (!$httpUtils->isAjaxRequest() && !NGS()->getDefinedValue('display_json')) {
-            $httpUtils->redirect($ex->getRedirectTo());
+        if (!$requestContext->isAjaxRequest() && !NGS()->getDefinedValue('display_json')) {
+            $requestContext->redirect($ex->getRedirectTo());
             return;
         }
 
