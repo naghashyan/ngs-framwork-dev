@@ -409,7 +409,7 @@ abstract class NGSDeprecated extends NgsModule
             if ($this->getModulesRoutesEngine()->isDefaultModule()) {
                 return $this->getHttpUtils()->getHttpHost(true, $withProtocol);
             }
-            $ns = $this->getModulesRoutesEngine()->getModuleNS();
+            $ns = $this->getModulesRoutesEngine()->getModuleName();
         }
         return $this->getHttpUtils()->getHttpHost(true, $withProtocol) . '/' . $ns;
     }

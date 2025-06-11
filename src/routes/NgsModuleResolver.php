@@ -45,9 +45,9 @@ class NgsModuleResolver
     private ?string $defaultNS = null;
 
     /**
-     * Current module array
+     * Current module
      */
-    private array $moduleArr = [];
+    private ?NgsModule $currentModule = null;
 
     /**
      * List of all modules
@@ -62,25 +62,17 @@ class NgsModuleResolver
      */
     private string $dynUrlToken = 'dyn';
 
-    /**
-     * Module type (domain, subdomain, path)
-     */
-    private string $type = 'domain';
 
-    /**
-     * Current module instance
-     */
-    private ?NgsModule $currentModule = null;
 
     /**
      * Module namespace
      */
-    private string $ns = '';
+    private string $moduleName = '';
 
     /**
      * Module name
      */
-    private string $name = '';
+    private string $accessName = '';
 
     /**
      * Parent module
@@ -100,14 +92,12 @@ class NgsModuleResolver
      */
     public function __construct()
     {
-        $moduleArr = $this->getCurrentModule();
-        if (!$moduleArr) {
+        $module = $this->getCurrentModule();
+        if (!$module) {
             throw new DebugException('module.json not found please add file json into config folder');
         }
 
-        $this->setModuleNS($moduleArr['ns']);
-        $this->setModuleUri($moduleArr['uri']);
-        $this->setModuleType($moduleArr['type']);
+        $this->currentModule = $module;
     }
 
     public function initialize(): void
@@ -233,10 +223,10 @@ class NgsModuleResolver
      *
      * @return true|false
      */
-    public function checkModuleByNS(string $ns): bool
+    public function checkModuleByName(string $moduleName): bool
     {
         $routes = $this->getShuffledRoutes();
-        if (isset($routes[$ns])) {
+        if (isset($routes[$moduleName])) {
             return true;
         }
         return false;
@@ -248,9 +238,9 @@ class NgsModuleResolver
      * This method analyzes the request to determine which module should handle it.
      * It checks the domain, subdomain, and URI to find the appropriate module.
      *
-     * @return array Module information
+     * @return NgsModule Module information
      */
-    protected function getCurrentModule(): array
+    protected function getCurrentModule(): NgsModule
     {
         // Return cached result if available
         if ($this->currentModule !== null) {
@@ -258,7 +248,8 @@ class NgsModuleResolver
         }
 
         // Get domain information
-        $domain = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class)->getHttpHost(true);
+        $requestContext = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class);
+        $domain = $requestContext->getHttpHost(true);
 
         // Handle case when domain is not available
         if (!$domain) {
@@ -267,11 +258,11 @@ class NgsModuleResolver
 
         // Parse domain and get module configuration
         $parsedUrl = parse_url($domain);
-        $mainDomain = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class)->getMainDomain();
+        $mainDomain = $requestContext->getMainDomain();
         $moduleConfigArray = $this->getModulePartByDomain($mainDomain);
         $path = $parsedUrl['path'] ?? '';
         $host = explode('.', $path);
-        $uri = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class)->getRequestUri(true);
+        $uri = $requestContext->getRequestUri(true);
 
         // Try to find module by URI
         $moduleByUri = $this->getModuleByURI($moduleConfigArray, $uri);
@@ -294,29 +285,29 @@ class NgsModuleResolver
     /**
      * Handles the case when no domain is available
      * 
-     * @return array Default module information
+     * @return NgsModule Default module information
      */
-    private function handleNoDomain(): array
+    private function handleNoDomain(): NgsModule
     {
         $uri = '';
         $moduleConfigArray = $this->getModulePartByDomain(null);
-        $this->setModuleName('default');
-        $this->moduleArr = $this->getMatchedModule($moduleConfigArray['default'], $uri, 'default');
-        return $this->moduleArr;
+        $this->setAccessName('default');
+        $this->currentModule = $this->getMatchedModule($moduleConfigArray['default'], $uri, 'default');
+        return $this->currentModule;
     }
 
     /**
      * Handles module resolution by URI
      * 
-     * @param array $moduleByUri Module information from URI
+     * @param NgsModule $moduleByUri Module resolved from URI
      * @param array $host Host parts
      * @param array $moduleConfigArray Module configuration array
-     * @return array Module information
+     * @return NgsModule Module information
      */
-    private function handleModuleByUri(array $moduleByUri, array $host, array $moduleConfigArray): array
+    private function handleModuleByUri(NgsModule $moduleByUri, array $host, array $moduleConfigArray): NgsModule
     {
-        $this->moduleArr = $moduleByUri;
-        $this->setModuleName($this->moduleArr['uri']);
+        $this->currentModule = $moduleByUri;
+        $this->setAccessName($this->getModuleUri());
 
         // Check for parent module in subdomain
         if (count($host) >= 3) {
@@ -326,20 +317,20 @@ class NgsModuleResolver
             }
         }
 
-        return $this->moduleArr;
+        return $this->currentModule;
     }
 
     /**
      * Handles module resolution by subdomain
      * 
-     * @param array $moduleBySubdomain Module information from subdomain
-     * @return array Module information
+     * @param NgsModule $moduleBySubdomain Module information from subdomain
+     * @return NgsModule Module information
      */
-    private function handleModuleBySubdomain(array $moduleBySubdomain): array
+    private function handleModuleBySubdomain(NgsModule $moduleBySubdomain): NgsModule
     {
-        $this->moduleArr = $moduleBySubdomain;
-        $this->setModuleName($this->moduleArr['uri']);
-        return $this->moduleArr;
+        $this->currentModule = $moduleBySubdomain;
+        $this->setAccessName($this->getModuleUri());
+        return $this->currentModule;
     }
 
     /**
@@ -347,13 +338,13 @@ class NgsModuleResolver
      * 
      * @param array $moduleConfigArray Module configuration array
      * @param string $uri Request URI
-     * @return array Default module information
+     * @return NgsModule Default module information
      */
-    private function handleDefaultModule(array $moduleConfigArray, string $uri): array
+    private function handleDefaultModule(array $moduleConfigArray, string $uri): NgsModule
     {
-        $this->setModuleName('default');
-        $this->moduleArr = $this->getMatchedModule($moduleConfigArray['default'], $uri, 'default');
-        return $this->moduleArr;
+        $this->setAccessName('default');
+        $this->currentModule = $this->getMatchedModule($moduleConfigArray['default'], $uri, 'default');
+        return $this->currentModule;
     }
 
     /**
@@ -390,9 +381,9 @@ class NgsModuleResolver
      *
      * @param String $domain
      *
-     * @return array|null
+     * @return NgsModule|null
      */
-    private function getModuleBySubDomain(array $modulePart, string $domain): ?array
+    private function getModuleBySubDomain(array $modulePart, string $domain): ?NgsModule
     {
         $routes = $modulePart;
         if (isset($routes['subdomain'][$domain])) {
@@ -409,15 +400,15 @@ class NgsModuleResolver
      *
      * @param array $modulePart Module configuration array
      * @param string $uri Request URI to analyze
-     * @return array Module information array or empty array if no match found
+     * @return NgsModule|null Module information or null if no match found
      */
-    private function getModuleByURI(array $modulePart, string $uri): array
+    private function getModuleByURI(array $modulePart, string $uri): ?NgsModule
     {
         // Extract path segments from URI
         $pathSegments = $this->extractPathSegmentsFromUri($uri);
 
         if (empty($pathSegments)) {
-            return [];
+            return null;
         }
 
         // Check if first segment is dynamic URL token and remove it
@@ -426,7 +417,7 @@ class NgsModuleResolver
 
             // If no segments left after removing dynamic URL token
             if (empty($pathSegments)) {
-                return [];
+                return null;
             }
         }
 
@@ -439,14 +430,10 @@ class NgsModuleResolver
 
         // Check if it's the default namespace
         if ($firstSegment === $this->getDefaultNS()) {
-            return [
-                'ns' => $this->getDefaultNS(), 
-                'uri' => $this->getDefaultNS(), 
-                'type' => 'path'
-            ];
+            return $this->getMatchedModule(['dir' => $this->getDefaultNS()], $this->getDefaultNS(), 'path');
         }
 
-        return [];
+        return null;
     }
 
     /**
@@ -479,17 +466,19 @@ class NgsModuleResolver
      * @return array Standardized module information array
      * @throws DebugException When required configuration is missing
      */
-    protected function getMatchedModule(array $matchedArr, string $uri, string $type): array
+    protected function getMatchedModule(array $matchedArr, string $uri, string $type): NgsModule
     {
-        // Determine the namespace from configuration
-        $namespace = $this->extractNamespaceFromConfig($matchedArr);
+        $moduleName = $this->extractNamespaceFromConfig($matchedArr);
 
-        // Return standardized module information
-        return [
-            'ns' => $namespace, 
-            'uri' => $uri, 
-            'type' => $type
-        ];
+        $this->setModuleName($moduleName);
+        $this->setModuleUri($uri);
+
+        $moduleDir = $this->getModulePath($moduleName);
+        if ($moduleDir === null) {
+            throw new DebugException('Module directory not found: ' . $moduleName);
+        }
+
+        return new NgsModule($moduleDir, $type);
     }
 
     /**
@@ -528,41 +517,32 @@ class NgsModuleResolver
     //Module interface implementation
 
     /**
-     * set module type if is domain or subdomain or path
+     * Return the current module type.
      *
-     * @param String $type
-     *
-     * @return void
-     */
-    private function setModuleType(string $type): void
-    {
-        $this->type = $type;
-    }
-
-    /**
-     * return defined module type
-     *
-     * @return String
+     * @deprecated Module type is now stored inside {@see NgsModule}. This
+     * method will be removed in future versions.
      */
     public function getModuleType(): string
     {
-        return $this->type;
+        if ($this->currentModule !== null) {
+            return $this->currentModule->getType();
+        }
+
+        return 'domain';
     }
 
     /**
-     * set module namespace if is domain or subdomain or path
+     * Set module name (folder name)
      *
-     * @param String $ns
-     *
-     * @return void
+     * @param string $moduleName
      */
-    private function setModuleNS(string $ns): void
+    private function setModuleName(string $moduleName): void
     {
-        $this->ns = $ns;
+        $this->moduleName = $moduleName;
 
         // Update the current module if it's not already set
         if ($this->currentModule === null) {
-            $moduleDir = $this->getRootDir($ns);
+            $moduleDir = $this->getRootDir($moduleName);
             if ($moduleDir) {
                 $this->currentModule = new NgsModule($moduleDir);
             }
@@ -570,14 +550,13 @@ class NgsModuleResolver
     }
 
     /**
-     * return current namespace
+     * Return current module name
      *
      * @return String
      */
-    public function getModuleNS(): string
+    public function getModuleName(): string
     {
-        // We still need to maintain the namespace value for backward compatibility
-        return $this->ns;
+        return $this->moduleName;
     }
 
     /**
@@ -587,9 +566,9 @@ class NgsModuleResolver
      *
      * @return void
      */
-    private function setModuleName(string $name): void
+    private function setAccessName(string $name): void
     {
-        $this->name = $name;
+        $this->accessName = $name;
     }
 
     /**
@@ -613,9 +592,9 @@ class NgsModuleResolver
      *
      * @return String
      */
-    public function getModuleName(): string
+    public function getAccessName(): string
     {
-        return $this->name;
+        return $this->accessName;
     }
 
     /**
@@ -742,11 +721,11 @@ class NgsModuleResolver
      *
      * @return null
      */
-    public function getModuleUriByNS(string $ns): ?array
+    public function getModuleUriByName(string $moduleName): ?array
     {
         $routes = $this->getShuffledRoutes();
-        if (isset($routes[$ns])) {
-            return $routes[$ns];
+        if (isset($routes[$moduleName])) {
+            return $routes[$moduleName];
         }
         return null;
     }
@@ -760,10 +739,7 @@ class NgsModuleResolver
      */
     public function isDefaultModule(): bool
     {
-        if ($this->getModuleNS() == $this->getDefaultNS()) {
-            return true;
-        }
-        return false;
+        return $this->getModuleName() === $this->getDefaultNS();
     }
 
     /**
@@ -773,12 +749,9 @@ class NgsModuleResolver
      *
      * @return Boolean
      */
-    public function isCurrentModule(string $namespace): bool
+    public function isCurrentModule(string $moduleName): bool
     {
-        if ($this->getModuleNS() == $namespace) {
-            return true;
-        }
-        return false;
+        return $this->getModuleName() === $moduleName;
     }
 
     /**
@@ -824,7 +797,7 @@ class NgsModuleResolver
      */
     private function isDefaultModuleNamespace(string $namespace): bool
     {
-        return ($namespace === '' && $this->getDefaultNS() == $this->getModuleNS()) || 
+        return ($namespace === '' && $this->getDefaultNS() == $this->getModuleName()) ||
                $this->getDefaultNS() == $namespace;
     }
 
@@ -844,7 +817,7 @@ class NgsModuleResolver
             if ($this->currentModule !== null) {
                 return $this->currentModule->getDir();
             }
-            return realpath($rootPath . '/' . $modulesDir . '/' . $this->getModuleNS());
+            return realpath($rootPath . '/' . $modulesDir . '/' . $this->getModuleName());
         }
 
         return realpath($rootPath . '/' . $modulesDir . '/' . $namespace);
@@ -878,8 +851,8 @@ class NgsModuleResolver
     private function isCmsModule(string $namespace): bool
     {
         $cmsNs = NGS()->get('NGS_CMS_NS');
-        return ($namespace === $cmsNs) || 
-               ($namespace === '' && $this->getModuleNS() === $cmsNs);
+        return ($namespace === $cmsNs) ||
+               ($namespace === '' && $this->getModuleName() === $cmsNs);
     }
 
     /**
