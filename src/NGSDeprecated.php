@@ -55,30 +55,6 @@ abstract class NGSDeprecated extends NgsModule
     protected $isModuleEnable = false;
 
 
-    public function initializeOld()
-    {
-        $moduleConstatPath = realpath(NGS()->getConfigDir() . '/constants.php');
-        if ($moduleConstatPath) {
-            require_once $moduleConstatPath;
-        }
-        $envConstantFile = realpath(NGS()->getConfigDir() . '/constants_' . $this->getShortEnvironment() . '.php');
-        if ($envConstantFile) {
-            require_once $envConstantFile;
-        }
-
-        $moduleRoutesEngine = NGS()->getModulesRoutesEngine();
-        $parentModule = $moduleRoutesEngine->getParentModule();
-
-        if ($parentModule && isset($parentModule['ns'])) {
-            $_prefix = $parentModule['ns'];
-            $envConstantFile = realpath(NGS()->getConfigDir($_prefix) . '/constants_' . $this->getShortEnvironment() . '.php');
-            if ($envConstantFile) {
-                require_once $envConstantFile;
-            }
-        }
-
-        $this->getModulesRoutesEngine(true)->initialize();
-    }
 
     /*
      |--------------------------------------------------------------------------

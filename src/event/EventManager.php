@@ -102,6 +102,8 @@ class EventManager implements EventManagerInterface
      */
     public function loadSubscribers(bool $loadAll = false): array
     {
+        return [];
+        //TODO: ZN: should be revised and moved to admin cms
         $confDir = \NGS()->get('CONF_DIR');
         $ngsCmsNs = \NGS()->get('NGS_CMS_NS');
         $adminToolsSubscribersPath = \NGS()->getModuleDirByNS($ngsCmsNs) . '/' . $confDir . '/event_subscribers.json';

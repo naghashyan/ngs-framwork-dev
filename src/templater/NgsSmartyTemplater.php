@@ -21,6 +21,7 @@
 namespace ngs\templater;
 
 use ngs\exceptions\DebugException;
+use ngs\routes\NgsModuleResolver;
 use ngs\util\NgsArgs;
 use ngs\util\NgsEnvironmentContext;
 use Smarty\Smarty;
@@ -43,10 +44,12 @@ class NgsSmartyTemplater extends Smarty
      */
     public function __construct(bool $isHtml = true)
     {
+        /** @var NgsModuleResolver $moduleRoutesEngine */
         $moduleRoutesEngine = NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', \ngs\routes\NgsModuleResolver::class);
         parent::__construct();
-        $this->assign('NGS_CMS_DIR', realpath(NGS()->getModuleDirByNS(NGS()->get('NGS_CMS_NS')) . '/' . NGS()->get('TEMPLATES_DIR')));
-        $this->assign('ADMIN_DIR', realpath(NGS()->getModuleDirByNS('admin') . '/' . NGS()->get('TEMPLATES_DIR')));
+        //TODO: ZN: should be defined on the module level
+//        $this->assign('NGS_CMS_DIR', realpath(NGS()->getModuleDirByNS(NGS()->get('NGS_CMS_NS')) . '/' . NGS()->get('TEMPLATES_DIR')));
+//        $this->assign('ADMIN_DIR', realpath(NGS()->getModuleDirByNS('admin') . '/' . NGS()->get('TEMPLATES_DIR')));
         $this->isHtml = $isHtml;
         //register NGS plugins
         $this->registerPlugin('function', 'nest', [$this, 'nest']);
@@ -54,11 +57,14 @@ class NgsSmartyTemplater extends Smarty
         $this->registerPlugin('function', 'ngs', [$this, 'NGS']);
         $this->registerPlugin('modifier', 'json_encode', [$this, "jsonEncode"]);
         $this->registerPlugin('modifier', 'print_r', [$this, "printR"]);
-        $moduleList = $moduleRoutesEngine->getAllModules();
+
+        $moduleDirs = $moduleRoutesEngine->getAllModulesDirs();
         $tmpTplArr = [];
-        foreach ($moduleList as $value) {
-            $tmpTplArr[$value] = realpath(NGS()->getModuleDirByNS($value) . '/' . NGS()->get('TEMPLATES_DIR'));
+
+        foreach ($moduleDirs as $moduleDir) {
+            $tmpTplArr[$moduleDir] = realpath($moduleDir . '/' . NGS()->get('TEMPLATES_DIR'));
         }
+
         $this->setTemplateDir($tmpTplArr);
         $this->setCompileDir($this->getSmartyCompileDir());
         $this->setConfigDir($this->getSmartyConfigDir());

@@ -182,7 +182,7 @@ class Dispatcher
 
             $environmentContext = NgsEnvironmentContext::getInstance();
             if (!$environmentContext->isProduction()) {
-                var_dump($error);
+                var_dump("Error:" . $error);
             }
 
             header($_SERVER["SERVER_PROTOCOL"] . " 500 Internal Server Error", true, 500);
@@ -476,7 +476,8 @@ class Dispatcher
      */
     private function streamStaticFile(\ngs\routes\NgsRoute $route): void
     {
-        $moduleDir = NGS()->getModuleDirByNS($route->getModule());
+        $module = $route->getModule();
+        $moduleDir = $module->getModuleDir();
         $publicDirForModule = realpath($moduleDir . '/' . NGS()->get('PUBLIC_DIR'));
         $filePath = realpath($publicDirForModule . '/' . $route->getFileUrl());
 

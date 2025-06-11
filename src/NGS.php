@@ -93,8 +93,8 @@ namespace ngs {
             }
 
             $projectRoot = $this->getDefinedValue("NGS_ROOT");
-
-            parent::__construct($projectRoot, $this->config, [], $frameworkConstants);
+//TODO: ZN: refactor - use constants
+            parent::__construct($projectRoot, "domain", $this->config, [], $frameworkConstants);
 
             // Initialize module routes
             //$this->getModulesRoutesEngine(true)->initialize();
@@ -132,9 +132,6 @@ namespace ngs {
             $this->moduleDir = $ngsRoot;
         }
 
-
-
-
         /**
          * Returns a singleton instance of this class.
          *
@@ -149,19 +146,6 @@ namespace ngs {
 
             return self::$instance;
         }
-
-        /**
-         * Gets the module directory by namespace.
-         *
-         * @param string $ns The namespace
-         * @return string The directory path
-         */
-        public function getModuleDirByNS(string $ns = ''): string
-        {
-            return $this->getModulesRoutesEngine()->getRootDir($ns);
-        }
-
-
 
         /**
          * Gets a module instance.
@@ -193,6 +177,10 @@ namespace ngs {
          */
         private function loadModule(string $moduleName): ?NgsModule
         {
+            if($moduleName === ""){
+                return $this;
+            }
+
             // Load modules configuration
             $modulesConfigFile = $this->getDefinedValue('NGS_ROOT') . '/conf/modules.json';
             if (!file_exists($modulesConfigFile)) {
@@ -295,6 +283,19 @@ namespace ngs {
             }
 
             return $this->config[$prefix] ?? null;
+        }
+
+        /**
+         * Gets the module directory by namespace.
+         * @deprecated
+         * @param string $name The namespace
+         * @return string The directory path
+         */
+        public function getModuleDirByNS(string $name = ''): string
+        {
+            /** @var NgsModuleResolver $moduleResolver */
+            $module = $this->loadModule($name);
+            return $module->getDir();
         }
 
         /**

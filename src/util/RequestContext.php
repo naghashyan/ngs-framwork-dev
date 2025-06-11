@@ -88,6 +88,7 @@ class RequestContext
     }
 
     /**
+     * TODO: ZN: refactor and clean up the logic with the NS
      * Get the HTTP host by namespace
      * 
      * @param string $ns The namespace
@@ -98,6 +99,8 @@ class RequestContext
     {
         $moduleRoutesEngine = NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', \ngs\routes\NgsModuleResolver::class);
         $httpHost = $this->getHttpHost(true, $withProtocol);
+        return $httpHost;
+        //TODO: ZN: refactor and clean up the logic with the NS
         if ($moduleRoutesEngine->getModuleType() === "path") {
             if ($ns == "") {
                 return $httpHost;
@@ -151,7 +154,8 @@ class RequestContext
         if (strpos($uri, "?") !== false) {
             $uri = substr($uri, 0, strpos($uri, "?"));
         }
-
+        return $uri;
+//TODO: ZN: refactor and clean up the logic with the NS
         if ($full === false) {
             $moduleRoutesEngine = NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', \ngs\routes\NgsModuleResolver::class);
             if($moduleRoutesEngine->getModuleType() == "path"){

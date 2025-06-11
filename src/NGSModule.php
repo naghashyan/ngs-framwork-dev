@@ -11,6 +11,22 @@ use ngs\util\NgsEnvironmentContext;
 
 class NgsModule
 {
+    /**
+     * Module type constants
+     */
+    public const MODULE_TYPE_SUBDOMAIN = 'subdomain';
+    public const MODULE_TYPE_DOMAIN = 'domain';
+    public const MODULE_TYPE_PATH = 'path';
+
+    /**
+     * Array of all module types
+     */
+    public const MODULE_TYPES = [
+        self::MODULE_TYPE_SUBDOMAIN,
+        self::MODULE_TYPE_DOMAIN,
+        self::MODULE_TYPE_PATH
+    ];
+
     protected array $constants = [];
     protected string $moduleDir;
     protected bool $isComposerPackage = false;
@@ -18,7 +34,7 @@ class NgsModule
     /**
      * Module type (domain, subdomain, path)
      */
-    protected string $type = 'domain';
+    protected string $type = self::MODULE_TYPE_DOMAIN;
 
     /**
      * Cache for instances created by createDefinedInstance.
@@ -37,7 +53,7 @@ class NgsModule
      * @param array $parentConstants Parent constants to be used as base
      * @throws NgsException If modulePath is null and module name cannot be determined
      */
-    public function __construct(?string $moduleDir = null, string $type = 'domain', array $configReplacements = [], array $overrideConstants = [], array $parentConstants = [])
+    public function __construct(?string $moduleDir = null, string $type = self::MODULE_TYPE_DOMAIN, array $configReplacements = [], array $overrideConstants = [], array $parentConstants = [])
     {
         if ($moduleDir !== null) {
             $this->moduleDir = $moduleDir;
@@ -46,9 +62,8 @@ class NgsModule
         }
 
         $this->type = $type;
+
         $this->loadConstants($configReplacements, $overrideConstants, $parentConstants);
-
-
     }
 
     /**
@@ -64,8 +79,9 @@ class NgsModule
         // First set the parent constants as the base
         $this->constants = $parentConstants;
 
-        $constantsFile = $this->getConstantsFile($this->moduleDir);
+        $constantsFile = $this->getConstantsFile();
         $environmentContext = NgsEnvironmentContext::getInstance();
+        //debug_print_backtrace();
 
         if (!file_exists($constantsFile)) {
             throw new NgsException("Constants file not found: {$constantsFile}", 1);
@@ -144,7 +160,6 @@ class NgsModule
     /**
      * Get the constants file path.
      *
-     * @param string $moduleDir The module directory
      * @return string The path to the constants file
      */
     private function getConstantsFile(): string
