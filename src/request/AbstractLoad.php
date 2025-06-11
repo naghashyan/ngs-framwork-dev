@@ -71,7 +71,7 @@ abstract class AbstractLoad extends AbstractRequest
             NGS()->getLoadMapper()->setGlobalParentLoad($this->getLoadName());
         }
         $ns = get_class($this);
-        $moduleNS = NGS()->getModulesRoutesEngine()->getModuleNS();
+        $moduleNS = NGS()->getModulesRoutesEngine()->getModuleName();
         $ns = substr($ns, strpos($ns, $moduleNS) + strlen($moduleNS) + 1);
         $ns = str_replace(['Load', '\\'], ['', '.'], $ns);
         $className = lcfirst(substr($ns, strrpos($ns, '.') + 1));

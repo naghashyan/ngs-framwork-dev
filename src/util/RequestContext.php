@@ -133,7 +133,7 @@ class RequestContext
             if ($moduleRoutesEngine->isDefaultModule()) {
                 return $httpHost;
             }
-            $ns = $moduleRoutesEngine->getModuleNS();
+            $ns = $moduleRoutesEngine->getModuleName();
         }
         return $this->getHttpHost(true, $withProtocol) . "/" . $ns;
     }

@@ -368,15 +368,15 @@ class NgsSmartyTemplater extends Smarty
         $jsString .= "NGS.setInitialLoad('" . NGS()->getRoutesEngine()->getContentLoad() . "', '" . json_encode($this->params) . "');";
         $jsModule = '';
         if (!NGS()->getModulesRoutesEngine()->isDefaultModule()) {
-            $jsModule = NGS()->getModulesRoutesEngine()->getModuleNS() . '/';
+            $jsModule = NGS()->getModulesRoutesEngine()->getModuleName() . '/';
         }
 
         $jsString .= 'NGS.setJsPublicDir("' . $jsModule . NGS()->getPublicJsOutputDir() . '");';
-        $jsString .= 'NGS.setModule("' . NGS()->getModulesRoutesEngine()->getModuleNS() . '");';
+        $jsString .= 'NGS.setModule("' . NGS()->getModulesRoutesEngine()->getModuleName() . '");';
         $jsString .= 'NGS.setTmst("' . time() . '");';
         $jsString .= 'NGS.setHttpHost("' . NGS()->getHttpUtils()->getHttpHostByNs("", true) . '");';
         if (!NGS()->getModulesRoutesEngine()->isDefaultModule()) {
-            $jsString .= 'NGS.setModuleHttpHost("' . NGS()->getHttpUtils()->getHttpHostByNs(NGS()->getModulesRoutesEngine()->getModuleNS(), true) . '");';
+            $jsString .= 'NGS.setModuleHttpHost("' . NGS()->getHttpUtils()->getHttpHostByNs(NGS()->getModulesRoutesEngine()->getModuleName(), true) . '");';
         }
         $staticPath = NGS()->getHttpUtils()->getHttpHost(true);
         if (isset(NGS()->getConfig()->static_path)) {

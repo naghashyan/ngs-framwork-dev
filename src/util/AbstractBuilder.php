@@ -135,7 +135,7 @@ abstract class AbstractBuilder
                         }
                     }
                 } else {
-                    $module = $moduleRoutesEngine->getModuleNS();
+                    $module = $moduleRoutesEngine->getModuleName();
                     if (isset($value->module)) {
                         $module = $value->module;
                     }

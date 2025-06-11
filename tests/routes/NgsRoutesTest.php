@@ -119,10 +119,10 @@ class NgsRoutesTest extends TestCase
      */
     public function testGetStaticFileRoute(): void
     {
-        // Mock checkModuleByNS and getModuleNS methods
-        $this->mockModuleRoutesEngine->method('checkModuleByNS')
+        // Mock checkModuleByName and getModuleName methods
+        $this->mockModuleRoutesEngine->method('checkModuleByName')
             ->willReturn(true);
-        $this->mockModuleRoutesEngine->method('getModuleNS')
+        $this->mockModuleRoutesEngine->method('getModuleName')
             ->willReturn('test_module');
         $this->mockModuleRoutesEngine->method('getModuleType')
             ->willReturn('domain');
@@ -179,7 +179,7 @@ class NgsRoutesTest extends TestCase
     {
         $mock = $this->createMock(\stdClass::class);
         
-        $mock->method('getModuleNS')
+        $mock->method('getModuleName')
             ->willReturn('test_module');
         
         $mock->method('getDefaultNS')
@@ -187,8 +187,8 @@ class NgsRoutesTest extends TestCase
         
         $mock->method('checkModulByNS')
             ->willReturn(true);
-        
-        $mock->method('checkModuleByNS')
+
+        $mock->method('checkModuleByName')
             ->willReturn(true);
         
         return $mock;

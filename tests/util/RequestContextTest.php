@@ -46,7 +46,7 @@ if (!function_exists('NGS')) {
                             return true;
                         }
 
-                        public function getModuleNS() {
+                        public function getModuleName() {
                             return "test";
                         }
                     };

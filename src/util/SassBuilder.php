@@ -80,7 +80,7 @@ namespace ngs\util {
             if ($moduleRoutesEngineForParser->isDefaultModule()) {
                 $ngsModulePathForParser = $requestContext->getHttpHost(true, false);
             } else {
-                $currentModuleNsForParser = $moduleRoutesEngineForParser->getModuleNS();
+                $currentModuleNsForParser = $moduleRoutesEngineForParser->getModuleName();
                 $ngsModulePathForParser = $requestContext->getHttpHost(true, false) . '/' . $currentModuleNsForParser;
             }
             $this->sassParser->setVariables([
@@ -114,7 +114,8 @@ namespace ngs\util {
                     $modulePath = $value["module"];
                     $module = $value["module"];
                 }
-                $sassHost = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class)->getHttpHostByNs($modulePath) . "/sass/";
+                $requestContext = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class);
+                $sassHost = $requestContext->getHttpHostByNs($modulePath) . "/sass/";
                 $sassFilePath = realpath(realpath(NGS()->getModuleDirByNS($module) . '/' . NGS()->get('SASS_DIR')) . "/" . $value["file"]);
                 if ($sassFilePath == false) {
                     throw new DebugException("Please add or check if correct sass file in builder under section " . $value["file"]);

@@ -84,21 +84,21 @@ class NgsModuleRoutesTest extends TestCase
     /**
      * Test checking module by namespace
      */
-    public function testCheckModuleByNS(): void
+    public function testCheckModuleByName(): void
     {
         // Test with existing module
-        $this->assertTrue($this->moduleRoutes->checkModuleByNS('test_module'));
+        $this->assertTrue($this->moduleRoutes->checkModuleByName('test_module'));
 
         // Test with non-existing module
-        $this->assertFalse($this->moduleRoutes->checkModuleByNS('non_existing_module'));
+        $this->assertFalse($this->moduleRoutes->checkModuleByName('non_existing_module'));
     }
 
     /**
      * Test getting module namespace
      */
-    public function testGetModuleNS(): void
+    public function testGetModuleName(): void
     {
-        $this->assertEquals('test_module', $this->moduleRoutes->getModuleNS());
+        $this->assertEquals('test_module', $this->moduleRoutes->getModuleName());
     }
 
     /**

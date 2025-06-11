@@ -64,7 +64,7 @@ class LessBuilder extends AbstractBuilder
         if ($moduleRoutesEngineForParser->isDefaultModule()) {
             $ngsModulePathForParser = $requestContext->getHttpHost(true, false);
         } else {
-            $currentModuleNsForParser = $moduleRoutesEngineForParser->getModuleNS();
+            $currentModuleNsForParser = $moduleRoutesEngineForParser->getModuleName();
             $ngsModulePathForParser = $requestContext->getHttpHost(true, false) . '/' . $currentModuleNsForParser;
         }
         $this->lessParser->parse('@NGS_PATH: \'' . $ngsPathForParser . '\';@NGS_MODULE_PATH: \'' . $ngsModulePathForParser . '\';');
@@ -95,7 +95,8 @@ class LessBuilder extends AbstractBuilder
                 $modulePath = $value['module'];
                 $module = $value['module'];
             }
-            $lessHost = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class)->getHttpHostByNs($modulePath) . '/less/';
+            $requestContext = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class);
+            $lessHost = $requestContext->getHttpHostByNs($modulePath) . '/less/';
             $lessDir = realpath(NGS()->getModuleDirByNS($module) . '/' . NGS()->get('LESS_DIR'));
             $lessFilePath = realpath($lessDir . '/' . $value['file']);
             if ($lessFilePath === false) {

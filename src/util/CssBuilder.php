@@ -67,7 +67,7 @@ class CssBuilder extends AbstractBuilder
         if ($moduleRoutesEngineInst->isDefaultModule()) {
             $ngsModulePath = $requestContext->getHttpHost(true, false);
         } else {
-            $currentModuleNs = $moduleRoutesEngineInst->getModuleNS();
+            $currentModuleNs = $moduleRoutesEngineInst->getModuleName();
             $ngsModulePath = $requestContext->getHttpHost(true, false) . '/' . $currentModuleNs;
         }
 
@@ -98,7 +98,8 @@ class CssBuilder extends AbstractBuilder
             if ($value['module'] != null) {
                 $module = $value['module'];
             }
-            $inputFile = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class)->getHttpHostByNs($module) . '/devout/css/' . trim($value['file']);
+            $requestContext = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class);
+            $inputFile = $requestContext->getHttpHostByNs($module) . '/devout/css/' . trim($value['file']);
             echo '@import url("' . $inputFile . '");';
         }
     }

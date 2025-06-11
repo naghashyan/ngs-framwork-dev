@@ -46,7 +46,8 @@ class JsBuilder extends AbstractBuilder
             if ($value["module"] != null) {
                 $module = $value["module"];
             }
-            $inputFile = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class)->getHttpHostByNs($module) . "/js/" . trim(str_replace("\\", "/", $value["file"]));
+            $requestContext = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class);
+            $inputFile = $requestContext->getHttpHostByNs($module) . "/js/" . trim(str_replace("\\", "/", $value["file"]));
             echo("document.write('<script type=\"text/javascript\" src=\"" . $inputFile . "\"></script>');\n\r");
         }
     }

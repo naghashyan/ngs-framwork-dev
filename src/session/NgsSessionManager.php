@@ -100,7 +100,8 @@ class NgsSessionManager extends \ngs\session\AbstractSessionManager
      */
     public function updateUserUniqueId($user, $useSubdomain = false): void
     {
-        $domain = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class)->getHttpHost();
+        $requestContext = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class);
+        $domain = $requestContext->getHttpHost();
         if ($useSubdomain) {
             $domain = "." . $domain;
         }

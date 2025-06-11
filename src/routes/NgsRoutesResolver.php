@@ -269,7 +269,7 @@ class NgsRoutesResolver
     {
         $package = array_shift($urlPartsArr);
 
-        if ($package === NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', \ngs\routes\NgsModuleResolver::class)->getModuleNS()) {
+        if ($package === NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', \ngs\routes\NgsModuleResolver::class)->getModuleName()) {
             $package = array_shift($urlPartsArr);
         }
 
@@ -479,7 +479,7 @@ class NgsRoutesResolver
         }
 
         // Get module namespace and action package
-        $module = NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', \ngs\routes\NgsModuleResolver::class)->getModuleNS();
+        $module = NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', \ngs\routes\NgsModuleResolver::class)->getModuleName();
         $actionPackage = NGS()->getLoadsPackage();
 
         // Check if this is an action command
@@ -662,7 +662,8 @@ class NgsRoutesResolver
             return true;
         }
 
-        $requestMethod = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class)->getRequestHttpMethod();
+        $requestContext = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class);
+        $requestMethod = $requestContext->getRequestHttpMethod();
         return strtolower($route['method']) === strtolower($requestMethod);
     }
 
@@ -792,13 +793,13 @@ class NgsRoutesResolver
         $actionType = substr($foundRoute['action'], 0, strpos($foundRoute['action'], '.'));
         $moduleRoutesEngine = NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', \ngs\routes\NgsModuleResolver::class);
 
-        if ($moduleRoutesEngine->checkModuleByNS($actionType)) {
+        if ($moduleRoutesEngine->checkModuleByName($actionType)) {
             $actionNS = $actionType;
             $foundRoute['action'] = substr($foundRoute['action'], strpos($foundRoute['action'], '.') + 1);
         } else if (isset($foundRoute['namespace'])) {
             $actionNS = $foundRoute['namespace'];
         } else {
-            $actionNS = $moduleRoutesEngine->getModuleNS();
+            $actionNS = $moduleRoutesEngine->getModuleName();
         }
 
         return $actionNS;
@@ -1023,7 +1024,7 @@ class NgsRoutesResolver
         $filePieces = $urlMatches;
         $moduleRoutesEngine = NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', \ngs\routes\NgsModuleResolver::class);
 
-        if ($moduleRoutesEngine->checkModuleByNS($filePieces[0])) {
+        if ($moduleRoutesEngine->checkModuleByName($filePieces[0])) {
             $package = array_shift($filePieces);
             $fileUrl = implode('/', $filePieces);
         } else {
@@ -1065,9 +1066,9 @@ class NgsRoutesResolver
     {
         $moduleRoutesEngine = NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', \ngs\routes\NgsModuleResolver::class);
 
-        if (!$moduleRoutesEngine->checkModuleByNS($package) ||
+        if (!$moduleRoutesEngine->checkModuleByName($package) ||
             $moduleRoutesEngine->getModuleType() === 'path') {
-            return $moduleRoutesEngine->getModuleNS();
+            return $moduleRoutesEngine->getModuleName();
         }
 
         return $package;
@@ -1089,7 +1090,7 @@ class NgsRoutesResolver
 
         foreach ($nestedLoads as $key => $value) {
             // Determine action namespace
-            $actionNS = $value['namespace'] ?? $moduleRoutesEngine->getModuleNS();
+            $actionNS = $value['namespace'] ?? $moduleRoutesEngine->getModuleName();
 
             // Store original action as package
             $value['package'] = $value['action'];
