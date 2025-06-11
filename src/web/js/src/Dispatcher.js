@@ -139,15 +139,15 @@ let Dispatcher = {
     if(arguments.length === 3){
       module = arguments[2];
     }
-    let dynContainer = "";
-    if(NGS.getConfig().dynContainer !== ""){
-      dynContainer = "/" + NGS.getConfig().dynContainer + "/";
+    let dynUrlToken = "";
+    if(NGS.getConfig().dynUrlToken !== ""){
+      dynUrlToken = "/" + NGS.getConfig().dynUrlToken + "/";
     }
 
     if(NGS.getModule() != null && !module){
       module = NGS.getModule() + "/";
     }
-    return NGS.getHttpHost() + dynContainer + module + "/" + _package + "/" + command;
+    return NGS.getHttpHost() + dynUrlToken + module + "/" + _package + "/" + command;
   }
 };
 export default Dispatcher;

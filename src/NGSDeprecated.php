@@ -33,7 +33,7 @@ require_once('routes/NgsModuleResolver.php');
 require_once('routes/NgsRoutesResolver.php');
 require_once('util/HttpUtils.php');
 
-abstract class NGSDeprecated extends NGSModule
+abstract class NGSDeprecated extends NgsModule
 {
     protected $ngsConfig = null;
     protected array $define = [];
@@ -205,7 +205,7 @@ abstract class NGSDeprecated extends NGSModule
     /**
      * this method do calculate and return NGS Framework
      * dir path by namespace
-     *
+     * @deprecated
      *
      * @return String config dir path
      */

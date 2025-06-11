@@ -167,10 +167,10 @@ namespace ngs {
          * Gets a module instance.
          *
          * @param string $moduleName Name of the module directory or Composer package
-         * @return NGSModule The module instance
+         * @return NgsModule The module instance
          * @throws NgsException If the module cannot be found or loaded
          */
-        public function getModule(string $moduleName): NGSModule
+        public function getModule(string $moduleName): NgsModule
         {
             // Check if module is already loaded
             if (isset($this->loadedModules[$moduleName])) {
@@ -188,10 +188,10 @@ namespace ngs {
          * Loads a module.
          *
          * @param string $moduleName Name of the module directory or Composer package
-         * @return NGSModule|null The module instance or null if not found
+         * @return NgsModule|null The module instance or null if not found
          * @throws NgsException If the module cannot be found or loaded
          */
-        private function loadModule(string $moduleName): ?NGSModule
+        private function loadModule(string $moduleName): ?NgsModule
         {
             // Load modules configuration
             $modulesConfigFile = $this->getDefinedValue('NGS_ROOT') . '/conf/modules.json';
@@ -241,7 +241,7 @@ namespace ngs {
             }
 
             // Create the module instance
-            return new NGSModule($modulePath);
+            return new NgsModule($modulePath);
         }
 
         /**

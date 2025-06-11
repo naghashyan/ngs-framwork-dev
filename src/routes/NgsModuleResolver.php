@@ -20,6 +20,7 @@
 namespace ngs\routes;
 
 use ngs\exceptions\DebugException;
+use ngs\NgsModule;
 
 /**
  * Class NgsModuleResolver - Handles module routing in the NGS framework
@@ -54,9 +55,12 @@ class NgsModuleResolver
     private array $modulesLists = [];
 
     /**
-     * Dynamic container name
+     * Dynamic URL token
+     * 
+     * This is used to scan the URL and find the appropriate request object
+     * without scanning the routes file
      */
-    private string $dynContainer = 'dyn';
+    private string $dynUrlToken = 'dyn';
 
     /**
      * Module type (domain, subdomain, path)
@@ -64,9 +68,14 @@ class NgsModuleResolver
     private string $type = 'domain';
 
     /**
+     * Current module instance
+     */
+    private ?NgsModule $currentModule = null;
+
+    /**
      * Module namespace
      */
-    private string $ns = 'ngs';
+    private string $ns = '';
 
     /**
      * Module name
@@ -91,7 +100,7 @@ class NgsModuleResolver
      */
     public function __construct()
     {
-        $moduleArr = $this->getModule();
+        $moduleArr = $this->getCurrentModule();
         if (!$moduleArr) {
             throw new DebugException('module.json not found please add file json into config folder');
         }
@@ -106,16 +115,16 @@ class NgsModuleResolver
     }
 
     /**
-     * return url dynamic part
-     * this method can be overrided from other users
-     * if they don't want to use 'dyn' container
-     * but on that way maybe cause conflicts with routs
+     * Returns the dynamic URL token
+     * This method can be overridden by users if they don't want to use 'dyn' token
+     * The token is used to scan the URL and find the appropriate request object
+     * without scanning the routes file
      *
-     * @return String
+     * @return string The dynamic URL token
      */
-    protected function getDynContainer(): string
+    protected function getDynUrlToken(): string
     {
-        return $this->dynContainer;
+        return $this->dynUrlToken;
     }
 
     /**
@@ -241,11 +250,11 @@ class NgsModuleResolver
      *
      * @return array Module information
      */
-    protected function getModule(): array
+    protected function getCurrentModule(): array
     {
         // Return cached result if available
-        if (!empty($this->moduleArr)) {
-            return $this->moduleArr;
+        if ($this->currentModule !== null) {
+            return $this->currentModule;
         }
 
         // Get domain information
@@ -411,11 +420,11 @@ class NgsModuleResolver
             return [];
         }
 
-        // Check if first segment is dynamic container and remove it
-        if ($pathSegments[0] === $this->getDynContainer()) {
+        // Check if first segment is dynamic URL token and remove it
+        if ($pathSegments[0] === $this->getDynUrlToken()) {
             array_shift($pathSegments);
 
-            // If no segments left after removing dynamic container
+            // If no segments left after removing dynamic URL token
             if (empty($pathSegments)) {
                 return [];
             }
@@ -550,6 +559,14 @@ class NgsModuleResolver
     private function setModuleNS(string $ns): void
     {
         $this->ns = $ns;
+
+        // Update the current module if it's not already set
+        if ($this->currentModule === null) {
+            $moduleDir = $this->getRootDir($ns);
+            if ($moduleDir) {
+                $this->currentModule = new NgsModule($moduleDir);
+            }
+        }
     }
 
     /**
@@ -559,6 +576,7 @@ class NgsModuleResolver
      */
     public function getModuleNS(): string
     {
+        // We still need to maintain the namespace value for backward compatibility
         return $this->ns;
     }
 
@@ -774,6 +792,11 @@ class NgsModuleResolver
      */
     public function getRootDir(string $namespace = ''): ?string
     {
+        // If namespace is empty and currentModule is set, return its directory
+        if ($namespace === '' && $this->currentModule !== null) {
+            return $this->currentModule->getDir();
+        }
+
         // Handle default module
         if ($this->isDefaultModuleNamespace($namespace)) {
             return NGS()->get('NGS_ROOT');
@@ -805,39 +828,6 @@ class NgsModuleResolver
                $this->getDefaultNS() == $namespace;
     }
 
-    /**
-     * Checks if the specified namespace is the framework module
-     * 
-     * @param string $namespace Module namespace
-     * @return bool True if it's the framework module
-     */
-    private function isFrameworkModule(string $namespace): bool
-    {
-        return $namespace === NGS()->get('FRAMEWORK_NS');
-    }
-
-    /**
-     * Checks if the specified namespace is the CMS module
-     * 
-     * @param string $namespace Module namespace
-     * @return bool True if it's the CMS module
-     */
-    private function isCmsModule(string $namespace): bool
-    {
-        $cmsNs = NGS()->get('NGS_CMS_NS');
-        return ($namespace === $cmsNs) || 
-               ($namespace === '' && $this->getModuleNS() === $cmsNs);
-    }
-
-    /**
-     * Gets the CMS module path
-     * 
-     * @return string|null CMS path or null if not found
-     */
-    private function getCmsPath(): ?string
-    {
-        return NGS()->getNgsCmsDir();
-    }
 
     /**
      * Gets the path for a regular module
@@ -851,11 +841,56 @@ class NgsModuleResolver
         $modulesDir = NGS()->get('MODULES_DIR');
 
         if ($namespace === '') {
+            if ($this->currentModule !== null) {
+                return $this->currentModule->getDir();
+            }
             return realpath($rootPath . '/' . $modulesDir . '/' . $this->getModuleNS());
         }
 
         return realpath($rootPath . '/' . $modulesDir . '/' . $namespace);
     }
 
+    /**
+     * ==========================================
+     * DEPRECATED METHODS
+     * ==========================================
+     */
+
+    /**
+     * Checks if the specified namespace is the framework module
+     * 
+     * @param string $namespace Module namespace
+     * @return bool True if it's the framework module
+     * @deprecated This method is deprecated and will be removed in future versions
+     */
+    private function isFrameworkModule(string $namespace): bool
+    {
+        return $namespace === NGS()->get('FRAMEWORK_NS');
+    }
+
+    /**
+     * Checks if the specified namespace is the CMS module
+     * 
+     * @param string $namespace Module namespace
+     * @return bool True if it's the CMS module
+     * @deprecated This method is deprecated and will be removed in future versions
+     */
+    private function isCmsModule(string $namespace): bool
+    {
+        $cmsNs = NGS()->get('NGS_CMS_NS');
+        return ($namespace === $cmsNs) || 
+               ($namespace === '' && $this->getModuleNS() === $cmsNs);
+    }
+
+    /**
+     * Gets the CMS module path
+     * 
+     * @return string|null CMS path or null if not found
+     * @deprecated This method is deprecated and will be removed in future versions
+     */
+    private function getCmsPath(): ?string
+    {
+        return NGS()->getNgsCmsDir();
+    }
 
 }

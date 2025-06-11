@@ -42,7 +42,7 @@ var NGS = {
     defaultIndicator: false,//element id(false|String)
     initialLoad: "",
     initialLoadParams: {},
-    dynContainer: "dyn",
+    dynUrlToken: "dyn",
     ajaxLoader: false
   },
 

@@ -50,9 +50,12 @@ class NgsRoutesResolver
     private ?string $contentLoad = null;
 
     /**
-     * Dynamic container name
+     * Dynamic URL token
+     * 
+     * This is used to scan the URL and find the appropriate request object
+     * without scanning the routes file
      */
-    private string $dynContainer = 'dyn';
+    private string $dynUrlToken = 'dyn';
 
     /**
      * Current route configuration
@@ -68,15 +71,16 @@ class NgsRoutesResolver
     }
 
     /**
-     * Returns the dynamic container name
-     * This method can be overridden by users if they don't want to use 'dyn' container
-     * but this may cause conflicts with routes
+     * Returns the dynamic URL token
+     * This method can be overridden by users if they don't want to use 'dyn' token
+     * The token is used to scan the URL and find the appropriate request object
+     * without scanning the routes file
      *
-     * @return string Dynamic container name
+     * @return string The dynamic URL token
      */
-    protected function getDynContainer(): string
+    protected function getDynUrlToken(): string
     {
-        return $this->dynContainer;
+        return $this->dynUrlToken;
     }
 
     /**
@@ -173,9 +177,9 @@ class NgsRoutesResolver
         $urlPartsArr = $matches;
 
         // Process the route based on package type
-        if ($package === $this->getDynContainer()) {
-            // Handle dynamic container routing
-            $route = $this->handleDynamicContainerRouting($urlPartsArr);
+        if ($package === $this->getDynUrlToken()) {
+            // Handle dynamic URL token routing
+            $route = $this->handleDynamicUrlTokenRouting($urlPartsArr);
         } else {
             // Handle regular routing
             if ($package === null) {
@@ -256,12 +260,12 @@ class NgsRoutesResolver
     }
 
     /**
-     * Handles routing for URLs with dynamic container
+     * Handles routing for URLs with dynamic URL token
      *
      * @param array $urlPartsArr URL parts array
      * @return \ngs\routes\NgsRoute Route information
      */
-    private function handleDynamicContainerRouting(array $urlPartsArr): \ngs\routes\NgsRoute
+    private function handleDynamicUrlTokenRouting(array $urlPartsArr): \ngs\routes\NgsRoute
     {
         $package = array_shift($urlPartsArr);
 

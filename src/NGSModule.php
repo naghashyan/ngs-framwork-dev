@@ -9,11 +9,16 @@ use ngs\routes\NgsModuleResolver;
 use ngs\exceptions\NgsException;
 use ngs\util\NgsEnvironmentContext;
 
-class NGSModule
+class NgsModule
 {
     protected array $constants = [];
     protected string $moduleDir;
     protected bool $isComposerPackage = false;
+
+    /**
+     * Module type (domain, subdomain, path)
+     */
+    protected string $type = 'domain';
 
     /**
      * Cache for instances created by createDefinedInstance.
@@ -23,15 +28,16 @@ class NGSModule
     protected array $instanceCache = [];
 
     /**
-     * Constructor for NGSModule.
+     * Constructor for NgsModule.
      *
      * @param string|null $moduleDir The path to the module
+     * @param string $type Module type (domain, subdomain, path)
+     * @param array $configReplacements Array of replacements for %placeholder% values in constants
      * @param array $overrideConstants Constants to override from constants.json
      * @param array $parentConstants Parent constants to be used as base
-     * @param array $configReplacements Array of replacements for %placeholder% values in constants
      * @throws NgsException If modulePath is null and module name cannot be determined
      */
-    public function __construct(?string $moduleDir = null, array $configReplacements = [], array $overrideConstants = [], array $parentConstants = [])
+    public function __construct(?string $moduleDir = null, string $type = 'domain', array $configReplacements = [], array $overrideConstants = [], array $parentConstants = [])
     {
         if ($moduleDir !== null) {
             $this->moduleDir = $moduleDir;
@@ -39,6 +45,7 @@ class NGSModule
             $this->isComposerPackage = str_contains($moduleDir, '/vendor/');
         }
 
+        $this->type = $type;
         $this->loadConstants($configReplacements, $overrideConstants, $parentConstants);
 
 
@@ -342,7 +349,7 @@ class NGSModule
      *
      * @return string The module directory path
      */
-    public function getPath(): string
+    public function getDir(): string
     {
         return $this->moduleDir;
     }
@@ -355,5 +362,15 @@ class NGSModule
     public function isComposerPackage(): bool
     {
         return $this->isComposerPackage;
+    }
+
+    /**
+     * Gets the module type.
+     *
+     * @return string The module type (domain, subdomain, path)
+     */
+    public function getType(): string
+    {
+        return $this->type;
     }
 }
