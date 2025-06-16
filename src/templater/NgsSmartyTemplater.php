@@ -371,7 +371,8 @@ class NgsSmartyTemplater extends Smarty
         $jsString .= 'function _setNgsDefaults(calback){_ngs_defaults.push(calback)};';
         $jsString .= 'function _initNgsDefaults(){for(var i=0; i<_ngs_defaults.length;i++){_ngs_defaults[i]();}};';
         $jsString .= '_setNgsDefaults(function(){';
-        $jsString .= "NGS.setInitialLoad('" . NGS()->getRoutesEngine()->getContentLoad() . "', '" . json_encode($this->params) . "');";
+        //TODO: ZN: this logic should be refactored, what is the content load, I guess it should be added to the load object
+        //$jsString .= "NGS.setInitialLoad('" . NGS()->getRoutesEngine()->getContentLoad() . "', '" . json_encode($this->params) . "');";
         $jsModule = '';
         if (!NGS()->getModulesRoutesEngine()->isDefaultModule()) {
             $jsModule = NGS()->getModulesRoutesEngine()->getModuleName() . '/';

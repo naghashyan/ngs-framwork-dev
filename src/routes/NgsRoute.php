@@ -1,231 +1,92 @@
 <?php
-/**
- * NgsRoute class to encapsulate route properties
- *
- * @author Levon Naghashyan <levon@naghashyan.com>
- * @site https://naghashyan.com
- * @year 2014-2023
- * @package ngs.framework.routes
- * @version 5.0.0
- *
- * This file is part of the NGS package.
- *
- * @copyright Naghashyan Solutions LLC
- *
- * For the full copyright and license information, please view the LICENSE
- * file that was distributed with this source code.
- */
 
 namespace ngs\routes;
 
 /**
- * Class NgsRoute - Encapsulates route properties
- * 
- * @package ngs\routes
+ * Class NgsRoute
+ *
+ * Represents a resolved route in the NGS framework.
+ * All properties must be set via setters after construction.
+ *
+ * @property string|null $request           The fully qualified request identifier (e.g. 'loads.main.home')
+ * @property array       $args              Positional or named parameters extracted from the URL or route constraints
+ * @property bool        $matched           True if the route was matched/resolved, false otherwise
+ * @property string|null $type              Type of request (e.g. 'load', 'action', 'file')
+ * @property string|null $module            Module/namespace for this request
+ * @property string|null $fileType          If file route: extension/type (e.g. 'css', 'jpg')
+ * @property string|null $fileUrl           If file route: the file path/URL
+ * @property string|null $notFoundRequest   The per-group 404 request identifier (if defined for this route group)
  */
-class NgsRoute implements \ArrayAccess
+class NgsRoute
 {
     /**
-     * Action to execute when the route is matched
+     * @var string|null Fully qualified request identifier (e.g. 'loads.main.home')
      */
-    private ?string $action = null;
+    private ?string $request = null;
 
     /**
-     * Arguments for the action
+     * @var array Route parameters (from URL segments, constraints, etc.)
      */
     private array $args = [];
 
     /**
-     * Route pattern
-     */
-    private ?string $route = null;
-
-    /**
-     * Constraints for route parameters
-     */
-    private array $constraints = [];
-
-    /**
-     * HTTP method for the route
-     */
-    private ?string $method = null;
-
-    /**
-     * Namespace for the action
-     */
-    private ?string $namespace = null;
-
-    /**
-     * Nested loads for the route
-     */
-    private array $nestedLoad = [];
-
-    /**
-     * Whether the route was matched
+     * @var bool True if a route was matched for this URL
      */
     private bool $matched = false;
 
     /**
-     * Type of the action (load or action)
+     * @var string|null Route type (e.g. 'load', 'action', 'file')
      */
     private ?string $type = null;
 
     /**
-     * Module name for the route
+     * @var string|null Module or namespace for the route
      */
     private ?string $module = null;
 
     /**
-     * URL of the file for static file routes
-     */
-    private ?string $fileUrl = null;
-
-    /**
-     * Type of the file for static file routes
+     * @var string|null File type/extension, for static file routes
      */
     private ?string $fileType = null;
 
     /**
-     * Constructor
-     *
-     * @param array|null $routeData Route data array (for backward compatibility)
+     * @var string|null File path/URL, for static file routes
      */
-    public function __construct(?array $routeData = null) {
-        if ($routeData !== null) {
-            if (isset($routeData['action'])) {
-                $this->setAction($routeData['action']);
-            }
-
-            if (isset($routeData['args'])) {
-                $this->setArgs($routeData['args']);
-            }
-
-            if (isset($routeData['route'])) {
-                $this->setRoute($routeData['route']);
-            }
-
-            if (isset($routeData['constraints'])) {
-                $this->setConstraints($routeData['constraints']);
-            }
-
-            if (isset($routeData['method'])) {
-                $this->setMethod($routeData['method']);
-            }
-
-            if (isset($routeData['namespace'])) {
-                $this->setNamespace($routeData['namespace']);
-            }
-
-            if (isset($routeData['nestedLoad'])) {
-                $this->setNestedLoad($routeData['nestedLoad']);
-            }
-
-            if (isset($routeData['matched'])) {
-                $this->setMatched($routeData['matched']);
-            }
-
-            if (isset($routeData['type'])) {
-                $this->setType($routeData['type']);
-            }
-
-            if (isset($routeData['module'])) {
-                $this->setModule($routeData['module']);
-            }
-
-            if (isset($routeData['file_url'])) {
-                $this->setFileUrl($routeData['file_url']);
-            }
-
-            if (isset($routeData['file_type'])) {
-                $this->setFileType($routeData['file_type']);
-            }
-        }
-    }
+    private ?string $fileUrl = null;
 
     /**
-     * Converts the route object to an array
-     *
-     * @return array Route data array
+     * @var string|null Per-group 404 request identifier (for rendering the correct not found page)
      */
-    public function toArray(): array
+    private ?string $notFoundRequest = null;
+
+    /**
+     * Constructor: always use setters after construction.
+     */
+    public function __construct()
     {
-        $result = [];
-
-        if ($this->action !== null) {
-            $result['action'] = $this->action;
-        }
-
-        if (!empty($this->args)) {
-            $result['args'] = $this->args;
-        }
-
-        if ($this->route !== null) {
-            $result['route'] = $this->route;
-        }
-
-        if (!empty($this->constraints)) {
-            $result['constraints'] = $this->constraints;
-        }
-
-        if ($this->method !== null) {
-            $result['method'] = $this->method;
-        }
-
-        if ($this->namespace !== null) {
-            $result['namespace'] = $this->namespace;
-        }
-
-        if (!empty($this->nestedLoad)) {
-            $result['nestedLoad'] = $this->nestedLoad;
-        }
-
-        if ($this->type !== null) {
-            $result['type'] = $this->type;
-        }
-
-        if ($this->module !== null) {
-            $result['module'] = $this->module;
-        }
-
-        if ($this->fileUrl !== null) {
-            $result['file_url'] = $this->fileUrl;
-        }
-
-        if ($this->fileType !== null) {
-            $result['file_type'] = $this->fileType;
-        }
-
-        $result['matched'] = $this->matched;
-
-        return $result;
+        // Intentionally empty.
     }
 
+    // === GETTERS AND SETTERS ===
+
     /**
-     * Gets the action
-     *
-     * @return string|null Action
+     * Get the resolved request string.
      */
-    public function getAction(): ?string
+    public function getRequest(): ?string
     {
-        return $this->action;
+        return $this->request;
     }
 
     /**
-     * Sets the action
-     *
-     * @param string $action Action
-     * @return self
+     * Set the resolved request string.
      */
-    public function setAction(string $action): self
+    public function setRequest(?string $request): void
     {
-        $this->action = $action;
-        return $this;
+        $this->request = $request;
     }
 
     /**
-     * Gets the arguments
-     *
-     * @return array Arguments
+     * Get the route arguments.
      */
     public function getArgs(): array
     {
@@ -233,143 +94,15 @@ class NgsRoute implements \ArrayAccess
     }
 
     /**
-     * Sets the arguments
-     *
-     * @param array $args Arguments
-     * @return self
+     * Set the route arguments.
      */
-    public function setArgs(array $args): self
+    public function setArgs(array $args): void
     {
         $this->args = $args;
-        return $this;
     }
 
     /**
-     * Adds arguments to the existing arguments
-     *
-     * @param array $args Arguments to add
-     * @return self
-     */
-    public function addArgs(array $args): self
-    {
-        $this->args = array_merge($this->args, $args);
-        return $this;
-    }
-
-    /**
-     * Gets the route pattern
-     *
-     * @return string|null Route pattern
-     */
-    public function getRoute(): ?string
-    {
-        return $this->route;
-    }
-
-    /**
-     * Sets the route pattern
-     *
-     * @param string $route Route pattern
-     * @return self
-     */
-    public function setRoute(string $route): self
-    {
-        $this->route = $route;
-        return $this;
-    }
-
-    /**
-     * Gets the constraints
-     *
-     * @return array Constraints
-     */
-    public function getConstraints(): array
-    {
-        return $this->constraints;
-    }
-
-    /**
-     * Sets the constraints
-     *
-     * @param array $constraints Constraints
-     * @return self
-     */
-    public function setConstraints(array $constraints): self
-    {
-        $this->constraints = $constraints;
-        return $this;
-    }
-
-    /**
-     * Gets the HTTP method
-     *
-     * @return string|null HTTP method
-     */
-    public function getMethod(): ?string
-    {
-        return $this->method;
-    }
-
-    /**
-     * Sets the HTTP method
-     *
-     * @param string $method HTTP method
-     * @return self
-     */
-    public function setMethod(string $method): self
-    {
-        $this->method = $method;
-        return $this;
-    }
-
-    /**
-     * Gets the namespace
-     *
-     * @return string|null Namespace
-     */
-    public function getNamespace(): ?string
-    {
-        return $this->namespace;
-    }
-
-    /**
-     * Sets the namespace
-     *
-     * @param string $namespace Namespace
-     * @return self
-     */
-    public function setNamespace(string $namespace): self
-    {
-        $this->namespace = $namespace;
-        return $this;
-    }
-
-    /**
-     * Gets the nested loads
-     *
-     * @return array Nested loads
-     */
-    public function getNestedLoad(): array
-    {
-        return $this->nestedLoad;
-    }
-
-    /**
-     * Sets the nested loads
-     *
-     * @param array $nestedLoad Nested loads
-     * @return self
-     */
-    public function setNestedLoad(array $nestedLoad): self
-    {
-        $this->nestedLoad = $nestedLoad;
-        return $this;
-    }
-
-    /**
-     * Gets whether the route was matched
-     *
-     * @return bool Whether the route was matched
+     * Was the route matched?
      */
     public function isMatched(): bool
     {
@@ -377,21 +110,15 @@ class NgsRoute implements \ArrayAccess
     }
 
     /**
-     * Sets whether the route was matched
-     *
-     * @param bool $matched Whether the route was matched
-     * @return self
+     * Set the matched flag.
      */
-    public function setMatched(bool $matched): self
+    public function setMatched(bool $matched): void
     {
         $this->matched = $matched;
-        return $this;
     }
 
     /**
-     * Gets the type of the action
-     *
-     * @return string|null Type of the action
+     * Get the route type.
      */
     public function getType(): ?string
     {
@@ -399,21 +126,15 @@ class NgsRoute implements \ArrayAccess
     }
 
     /**
-     * Sets the type of the action
-     *
-     * @param string $type Type of the action
-     * @return self
+     * Set the route type.
      */
-    public function setType(string $type): self
+    public function setType(?string $type): void
     {
         $this->type = $type;
-        return $this;
     }
 
     /**
-     * Gets the module name
-     *
-     * @return string|null Module name
+     * Get the module or namespace.
      */
     public function getModule(): ?string
     {
@@ -421,43 +142,15 @@ class NgsRoute implements \ArrayAccess
     }
 
     /**
-     * Sets the module name
-     *
-     * @param string $module Module name
-     * @return self
+     * Set the module or namespace.
      */
-    public function setModule(string $module): self
+    public function setModule(?string $module): void
     {
         $this->module = $module;
-        return $this;
     }
 
     /**
-     * Gets the file URL
-     *
-     * @return string|null File URL
-     */
-    public function getFileUrl(): ?string
-    {
-        return $this->fileUrl;
-    }
-
-    /**
-     * Sets the file URL
-     *
-     * @param string $fileUrl File URL
-     * @return self
-     */
-    public function setFileUrl(string $fileUrl): self
-    {
-        $this->fileUrl = $fileUrl;
-        return $this;
-    }
-
-    /**
-     * Gets the file type
-     *
-     * @return string|null File type
+     * Get the file type (for file/static routes).
      */
     public function getFileType(): ?string
     {
@@ -465,110 +158,42 @@ class NgsRoute implements \ArrayAccess
     }
 
     /**
-     * Sets the file type
-     *
-     * @param string $fileType File type
-     * @return self
+     * Set the file type (for file/static routes).
      */
-    public function setFileType(string $fileType): self
+    public function setFileType(?string $fileType): void
     {
         $this->fileType = $fileType;
-        return $this;
     }
 
     /**
-     * Magic method to access properties as array elements
-     *
-     * @param string $key Property name
-     * @return mixed Property value
+     * Get the file URL (for file/static routes).
      */
-    public function __get(string $key)
+    public function getFileUrl(): ?string
     {
-        $getter = 'get' . ucfirst($key);
-        if (method_exists($this, $getter)) {
-            return $this->$getter();
-        }
-
-        return null;
+        return $this->fileUrl;
     }
 
     /**
-     * Magic method to set properties as array elements
-     *
-     * @param string $key Property name
-     * @param mixed $value Property value
-     * @return void
+     * Set the file URL (for file/static routes).
      */
-    public function __set(string $key, $value): void
+    public function setFileUrl(?string $fileUrl): void
     {
-        $setter = 'set' . ucfirst($key);
-        if (method_exists($this, $setter)) {
-            $this->$setter($value);
-        }
+        $this->fileUrl = $fileUrl;
     }
 
     /**
-     * Magic method to check if a property exists
-     *
-     * @param string $key Property name
-     * @return bool Whether the property exists
+     * Get the per-group not-found request identifier.
      */
-    public function __isset(string $key): bool
+    public function getNotFoundRequest(): ?string
     {
-        $getter = 'get' . ucfirst($key);
-        if (method_exists($this, $getter)) {
-            return $this->$getter() !== null;
-        }
-
-        return false;
+        return $this->notFoundRequest;
     }
 
     /**
-     * ArrayAccess implementation to access properties as array elements
-     *
-     * @param mixed $offset Property name
-     * @return mixed Property value
+     * Set the per-group not-found request identifier.
      */
-    #[\ReturnTypeWillChange]
-    public function offsetGet($offset)
+    public function setNotFoundRequest(?string $notFoundRequest): void
     {
-        return $this->__get($offset);
-    }
-
-    /**
-     * ArrayAccess implementation to set properties as array elements
-     *
-     * @param mixed $offset Property name
-     * @param mixed $value Property value
-     * @return void
-     */
-    #[\ReturnTypeWillChange]
-    public function offsetSet($offset, $value): void
-    {
-        $this->__set($offset, $value);
-    }
-
-    /**
-     * ArrayAccess implementation to check if a property exists
-     *
-     * @param mixed $offset Property name
-     * @return bool Whether the property exists
-     */
-    #[\ReturnTypeWillChange]
-    public function offsetExists($offset): bool
-    {
-        return $this->__isset($offset);
-    }
-
-    /**
-     * ArrayAccess implementation to unset a property
-     *
-     * @param mixed $offset Property name
-     * @return void
-     */
-    #[\ReturnTypeWillChange]
-    public function offsetUnset($offset): void
-    {
-        // Not implemented
+        $this->notFoundRequest = $notFoundRequest;
     }
 }

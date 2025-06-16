@@ -283,7 +283,7 @@ class NgsModuleResolver
      */
     private function handleDefaultModule(array $moduleConfigArray, string $uri): NgsModule
     {
-        $this->currentModule = $this->getMatchedModule($moduleConfigArray['default'], $uri, 'default');
+        $this->currentModule = $this->getMatchedModule($moduleConfigArray, $uri, 'default');
         return $this->currentModule;
     }
 
@@ -505,21 +505,18 @@ class NgsModuleResolver
         }
 
         $modulesConfig = $this->getModulesConfig();
+
         $this->shuffledRoutes = array();
-        foreach ($modulesConfig as $domain => $moduleConfigArray) {
-            foreach ($moduleConfigArray as $type => $moduleConfig) {
-                if ($type === 'default') {
-                    $this->shuffledRoutes[$moduleConfig['dir']] = array('path' => $moduleConfig['dir'], 'type' => $type, 'domain' => $domain);
-                    continue;
-                }
-                foreach ($moduleConfig as $item) {
-                    if (isset($item['dir'])) {
-                        $this->shuffledRoutes[$item['dir']] = array('path' => $item['dir'], 'type' => $type, 'domain' => $domain);
-                    } elseif (isset($item['extend'])) {
-                        $this->shuffledRoutes[$item['extend']] = array('path' => $item['extend'], 'type' => $type, 'domain' => $domain);
-                    }
+        foreach ($modulesConfig as $type => $moduleConfig) {
+
+            foreach ($moduleConfig as $item) {
+                if (isset($item['dir'])) {
+                    $this->shuffledRoutes[$item['dir']] = array('path' => $item['dir'], 'type' => $type);
+                } elseif (isset($item['extend'])) {
+                    $this->shuffledRoutes[$item['extend']] = array('path' => $item['extend'], 'type' => $type);
                 }
             }
+
         }
         return $this->shuffledRoutes;
     }

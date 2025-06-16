@@ -87,7 +87,7 @@ class Dispatcher
 
             //TODO: ZN: implement the routesArray as a class
             if ($route === null) {
-                $route = $routesEngine->getDynamicLoad($requestContext->getRequestUri());
+                $route = $routesEngine->getRoute($requestContext->getRequestUri());
             }
 
             //TODO: MJ: for what is this?
@@ -106,11 +106,11 @@ class Dispatcher
             switch ($route->getType()) {
                 case 'load':
                     if (isset($_GET['ngsValidate']) && $_GET['ngsValidate'] === 'true') {
-                        $this->validate($route->getAction());
+                        $this->validate($route->getRequest());
                     } elseif (isset(NGS()->args()->args()['ngsValidate']) && NGS()->args()->args()['ngsValidate']) {
-                        $this->validate($route->getAction());
+                        $this->validate($route->getRequest());
                     } else {
-                        $this->loadPage($route->getAction());
+                        $this->loadPage($route->getRequest());
                     }
                     break;
 
@@ -119,7 +119,7 @@ class Dispatcher
                     // no break intentional - fall through to action case
 
                 case 'action':
-                    $this->doAction($route->getAction());
+                    $this->doAction($route->getRequest());
                     break;
 
                 case 'api_action':
@@ -218,8 +218,10 @@ class Dispatcher
             }
 
             $routesEngine = NGS()->createDefinedInstance('ROUTES_ENGINE', \ngs\routes\NgsRoutesResolver::class);
-            $contentLoad = $routesEngine->getContentLoad();
-            $loadObj->setLoadName($contentLoad);
+
+            //TODO:ZN: refactor this part, what is content load?
+            //$contentLoad = $routesEngine->getContentLoad();
+            //$loadObj->setLoadName($contentLoad);
             $loadObj->service();
 
             $templateEngine = NGS()->createDefinedInstance('TEMPLATE_ENGINE', \ngs\templater\NgsTemplater::class);
@@ -339,8 +341,9 @@ class Dispatcher
             }
 
             $routesEngine = NGS()->createDefinedInstance('ROUTES_ENGINE', \ngs\routes\NgsRoutesResolver::class);
-            $contentLoad = $routesEngine->getContentLoad();
-            $loadObj->setLoadName($contentLoad);
+            //TODO: ZN: this logic should be refactored, what is the contentLoad?
+//            $contentLoad = $routesEngine->getContentLoad();
+//            $loadObj->setLoadName($contentLoad);
             $loadObj->validate();
 
             // Passing arguments

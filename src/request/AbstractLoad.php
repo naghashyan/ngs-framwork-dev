@@ -81,10 +81,10 @@ abstract class AbstractLoad extends AbstractRequest
         }, $className);
         $nameSpace = str_replace('._', '.', $nameSpace);
 
-        $nestedLoads = NGS()->getRoutesEngine()->getNestedRoutes($nameSpace . '.' . $className);
+        //TODO: ZN: this logic should be refactored
+        $nestedLoads = [];
+        //$nestedLoads = NGS()->getRoutesEngine()->getNestedRoutes($nameSpace . '.' . $className);
         $loadDefaultLoads = $this->getDefaultLoads();
-
-        $defaultLoads = [];
 
         $defaultLoads = array_merge($loadDefaultLoads, $nestedLoads);
 

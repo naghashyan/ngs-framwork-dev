@@ -40,9 +40,9 @@ class NgsRestRoutes extends NgsRoutesResolver
      *
      * @return \ngs\routes\NgsRoute|null
      */
-    public function getDynamicLoad($url, $is404 = false): ?\ngs\routes\NgsRoute
+    public function getRoute($url, $is404 = false): ?\ngs\routes\NgsRoute
     {
-        $loadsArr = parent::getDynamicLoad($url);
+        $loadsArr = parent::getRoute($url);
         $currentRoute = $this->getCurrentRoute();
         if ($currentRoute !== null && $currentRoute->getMethod() !== null) {
             $this->setRequestHttpMethod($currentRoute->getMethod());
