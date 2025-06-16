@@ -28,7 +28,7 @@ class NgsModule
     ];
 
     protected array $constants = [];
-    protected string $moduleDir;
+    protected string $moduleDir = '';
     protected bool $isComposerPackage = false;
 
     /**
@@ -79,33 +79,35 @@ class NgsModule
         // First set the parent constants as the base
         $this->constants = $parentConstants;
 
-        $constantsFile = $this->getConstantsFile();
-        $environmentContext = NgsEnvironmentContext::getInstance();
-        //debug_print_backtrace();
+        try {
+            $constantsFile = $this->getConstantsFile();
+            $environmentContext = NgsEnvironmentContext::getInstance();
 
-        if (!file_exists($constantsFile)) {
-            throw new NgsException("Constants file not found: {$constantsFile}", 1);
-        }
+            if (file_exists($constantsFile)) {
+                $constants = json_decode(file_get_contents($constantsFile), true);
 
-        $constants = json_decode(file_get_contents($constantsFile), true);
+                if (is_array($constants)) {
+                    // Process constants from file and add to parent constants
+                    $this->processConstants($constants, $environmentContext, $configReplacements, $this->constants);
+                }
+            }
 
-        if (!is_array($constants)) {
-            throw new NgsException("Invalid constants file format: {$constantsFile}", 1);
-        }
+            // Apply override constants
+            $this->processConstants($overrideConstants, $environmentContext, $configReplacements, $this->constants);
 
-        // Process constants from file and add to parent constants
-        $this->processConstants($constants, $environmentContext, $configReplacements, $this->constants);
+            // Set default constants if not set
+            if (!isset($this->constants['NAME'])) {
+                $this->constants['NAME'] = 'default';
+            }
 
-        // Apply override constants
-        $this->processConstants($overrideConstants, $environmentContext, $configReplacements, $this->constants);
+            if (!isset($this->constants['VERSION'])) {
+                $this->constants['VERSION'] = '1.0.0';
+            }
 
-        // Validate required constants
-        if (!isset($this->constants['NAME'])) {
-            throw new NgsException("Required constant 'name' is missing in constants.json", 1);
-        }
-
-        if (!isset($this->constants['VERSION'])) {
-            throw new NgsException("Required constant 'version' is missing in constants.json", 1);
+        } catch (\Exception $e) {
+            // Set default constants if an exception occurs
+            $this->constants['NAME'] = 'default';
+            $this->constants['VERSION'] = '1.0.0';
         }
     }
 
@@ -167,7 +169,17 @@ class NgsModule
         $configDir = $this->getConfigDir();
         $environmentContext = NgsEnvironmentContext::getInstance();
 
-        return $environmentContext->getConstantsFilePath($configDir);
+        try {
+            if($this->isComposerPackage){
+                return $configDir . '/constants.json';
+            }
+            else{
+                return $environmentContext->getConstantsFilePath($configDir);
+            }
+        } catch (\Exception $e) {
+            // If an exception occurs, return a default path
+            return $configDir . '/constants.json';
+        }
     }
 
 
@@ -178,6 +190,12 @@ class NgsModule
      */
     public function getConfigDir(): string
     {
+        if (empty($this->moduleDir)) {
+            // If moduleDir is not set, use a hardcoded default config directory
+            // to avoid circular dependency with NGS()
+            $rootDir = defined('NGS_ROOT') ? NGS_ROOT : getcwd();
+            return $rootDir . '/conf';
+        }
         return $this->moduleDir . '/conf';
     }
 
@@ -188,6 +206,11 @@ class NgsModule
      */
     public function getName(): string
     {
+        if (!isset($this->constants['NAME'])) {
+            // If NAME constant is not set, return a default name
+            return 'default';
+        }
+
         return $this->constants['NAME'];
     }
 
@@ -195,15 +218,15 @@ class NgsModule
      * Gets the version of the module from constants.
      *
      * @return string The module version
-     * @throws NgsException If version is not defined in constants
      */
     public function getVersion(): string
     {
-        if (!isset($this->constants['version'])) {
-            throw new NgsException("Module version is not defined in constants", 1);
+        if (!isset($this->constants['VERSION']) && !isset($this->constants['version'])) {
+            // If version constant is not set, return a default version
+            return '1.0.0';
         }
 
-        return $this->constants['version'];
+        return $this->constants['VERSION'] ?? $this->constants['version'];
     }
 
     /**
@@ -366,6 +389,10 @@ class NgsModule
      */
     public function getDir(): string
     {
+        if (empty($this->moduleDir)) {
+            // If moduleDir is not set, use the default root directory
+            return NGS()->get('NGS_ROOT');
+        }
         return $this->moduleDir;
     }
 

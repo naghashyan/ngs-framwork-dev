@@ -40,9 +40,9 @@ class NgsRoute
     private ?string $type = null;
 
     /**
-     * @var string|null Module or namespace for the route
+     * @var \ngs\NgsModule|string|null Module instance or namespace for the route
      */
-    private ?string $module = null;
+    private $module = null;
 
     /**
      * @var string|null File type/extension, for static file routes
@@ -135,18 +135,38 @@ class NgsRoute
 
     /**
      * Get the module or namespace.
+     * 
+     * @return \ngs\NgsModule|string|null The module instance or namespace
      */
-    public function getModule(): ?string
+    public function getModule()
     {
         return $this->module;
     }
 
     /**
      * Set the module or namespace.
+     * 
+     * @param \ngs\NgsModule|string|null $module The module instance or namespace
      */
-    public function setModule(?string $module): void
+    public function setModule($module): void
     {
         $this->module = $module;
+    }
+
+    /**
+     * Get the module name.
+     * 
+     * For backward compatibility with code that expects a string.
+     * 
+     * @return string|null The module name
+     */
+    public function getModuleName(): ?string
+    {
+        if ($this->module instanceof \ngs\NgsModule) {
+            return $this->module->getName();
+        }
+
+        return $this->module;
     }
 
     /**

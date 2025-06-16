@@ -96,9 +96,6 @@ namespace ngs {
 //TODO: ZN: refactor - use constants
             parent::__construct($projectRoot, "domain", $this->config, [], $frameworkConstants);
 
-            // Initialize module routes
-            //$this->getModulesRoutesEngine(true)->initialize();
-
             // Load event subscribers
             $this->loadEvents();
         }
@@ -154,7 +151,7 @@ namespace ngs {
          * @return NgsModule The module instance
          * @throws NgsException If the module cannot be found or loaded
          */
-        public function getModule(string $moduleName): NgsModule
+        public function getModule(string $moduleName, string $type = self::MODULE_TYPE_DOMAIN): NgsModule
         {
             // Check if module is already loaded
             if (isset($this->loadedModules[$moduleName])) {
@@ -162,7 +159,7 @@ namespace ngs {
             }
 
             // Load the module and cache the instance
-            $module = $this->loadModule($moduleName);
+            $module = $this->loadModule($moduleName, $type);
             $this->loadedModules[$moduleName] = $module;
 
             return $module;
@@ -175,7 +172,7 @@ namespace ngs {
          * @return NgsModule|null The module instance or null if not found
          * @throws NgsException If the module cannot be found or loaded
          */
-        private function loadModule(string $moduleName): ?NgsModule
+        private function loadModule(string $moduleName, string $type = self::MODULE_TYPE_DOMAIN): ?NgsModule
         {
             if($moduleName === ""){
                 return $this;
@@ -228,8 +225,10 @@ namespace ngs {
                 }
             }
 
+            $module = new NgsModule($modulePath, $type);
+
             // Create the module instance
-            return new NgsModule($modulePath);
+            return $module;
         }
 
         /**

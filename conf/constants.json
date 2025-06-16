@@ -1,8 +1,6 @@
 {
   "constants": {
-    "VERSION": "1.0.0",
-    "NAME": "Ngs-Test",
-    "NGSVERSION": "4.0.0",
+     "NGSVERSION": "4.0.0",
     "FRAMEWORK_NS": "ngs",
     "DEFAULT_NS": "ngs",
     "NGS_CMS_NS": "ngs-AdminTools",

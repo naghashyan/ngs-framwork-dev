@@ -87,7 +87,19 @@ class Dispatcher
 
             //TODO: ZN: implement the routesArray as a class
             if ($route === null) {
-                $route = $routesEngine->getRoute($requestContext->getRequestUri());
+                $requestUri = $requestContext->getRequestUri();
+
+                // First: Detect and resolve the module from the request
+                $moduleResolver = \ngs\routes\NgsModuleResolver::getInstance();
+                $module = $moduleResolver->resolveModule($requestUri);
+
+                if ($module === null) {
+                    // Handle 404 (module not found)
+                    throw new NotFoundException('Module not found');
+                }
+
+                // Second: Pass the module instance to the RoutesResolver
+                $route = $routesEngine->getRouteWithModule($requestUri, $module);
             }
 
             //TODO: MJ: for what is this?
@@ -137,7 +149,11 @@ class Dispatcher
                 return;
             }
 
-            $route = $routesEngine->getNotFoundLoad();
+            // Get the module instance if available
+            $moduleResolver = \ngs\routes\NgsModuleResolver::getInstance();
+            $module = $moduleResolver->resolveModule($requestContext->getRequestUri());
+
+            $route = $routesEngine->getNotFoundLoad($module);
             if ($route === null || $this->isRedirect === true) {
                 echo '404';
                 exit;
@@ -154,7 +170,11 @@ class Dispatcher
                     return;
                 }
 
-                $route = $routesEngine->getNotFoundLoad();
+                // Get the module instance if available
+                $moduleResolver = \ngs\routes\NgsModuleResolver::getInstance();
+                $module = $moduleResolver->resolveModule($requestContext->getRequestUri());
+
+                $route = $routesEngine->getNotFoundLoad($module);
                 if ($route === null || $this->isRedirect === true) {
                     echo '404';
                     exit;
@@ -480,7 +500,21 @@ class Dispatcher
     private function streamStaticFile(\ngs\routes\NgsRoute $route): void
     {
         $module = $route->getModule();
-        $moduleDir = $module->getModuleDir();
+
+        // Handle both string and NgsModule instance
+        if (is_string($module)) {
+            // For backward compatibility, get the module instance from the module name
+            $moduleResolver = \ngs\routes\NgsModuleResolver::getInstance();
+            $moduleInstance = $moduleResolver->resolveModule('/' . $module);
+            if ($moduleInstance === null) {
+                throw new NotFoundException('Module not found: ' . $module);
+            }
+            $moduleDir = $moduleInstance->getDir();
+        } else {
+            // Module is already an NgsModule instance
+            $moduleDir = $module->getDir();
+        }
+
         $publicDirForModule = realpath($moduleDir . '/' . NGS()->get('PUBLIC_DIR'));
         $filePath = realpath($publicDirForModule . '/' . $route->getFileUrl());
 
