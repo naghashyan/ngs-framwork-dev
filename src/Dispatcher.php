@@ -81,7 +81,7 @@ class Dispatcher
         $this->eventManager->subscribeToEvents($subscribers);
         try {
             /** @var NgsRoutesResolver $routesEngine */
-        $routesEngine = NGS()->createDefinedInstance('ROUTES_ENGINE', \ngs\routes\NgsRoutesResolver::class);
+            $routesEngine = NGS()->createDefinedInstance('ROUTES_ENGINE', \ngs\routes\NgsRoutesResolver::class);
             $requestContext = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class);
             $templateEngine = NGS()->createDefinedInstance('TEMPLATE_ENGINE', \ngs\templater\NgsTemplater::class);
 
@@ -99,7 +99,7 @@ class Dispatcher
                 }
 
                 // Second: Pass the module instance to the RoutesResolver
-                $route = $routesEngine->getRouteWithModule($requestUri, $module);
+                $route = $routesEngine->resolveRoute($module, $requestUri);
             }
 
             //TODO: MJ: for what is this?
