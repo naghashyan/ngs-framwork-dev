@@ -40,7 +40,7 @@ class NgsRoute
     private ?string $type = null;
 
     /**
-     * @var \ngs\NgsModule|string|null Module instance or namespace for the route
+     * @var \ngs\NgsModule|null Module instance or namespace for the route
      */
     private $module = null;
 

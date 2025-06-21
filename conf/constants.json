@@ -41,7 +41,8 @@
     "NGS_ROUTS_ARRAY": "routes.json",
     "NGS_MODULS_ROUTS": "modules.json",
     "USE_SMARTY": true,
-    "BULK_UPDATE_LIMIT": 50
+    "BULK_UPDATE_LIMIT": 50,
+    "DYN_URL_TOKEN": "dyn"
   },
   "paths": {
     "CLASSES_DIR": "classes",
@@ -64,6 +65,7 @@
     "SMARTY_COMPILE_DIR": "compile"
   },
   "classes": {
+    "DISPATCHER": "ngs\\Dispatcher",
     "LOAD_MAPPER": "ngs\\routes\\NgsLoadMapper",
     "SESSION_MANAGER": "ngs\\session\\NgsSessionManager",
     "TEMPLATE_ENGINE": "ngs\\templater\\NgsTemplater",
