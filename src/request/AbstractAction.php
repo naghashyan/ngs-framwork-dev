@@ -22,6 +22,8 @@ namespace ngs\request;
 
 abstract class AbstractAction extends \ngs\request\AbstractRequest
 {
+    public const REQUEST_TYPE = "action";
+
     /**
      * @return void
      */
