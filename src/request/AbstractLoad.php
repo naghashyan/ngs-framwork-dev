@@ -28,7 +28,7 @@ use ngs\util\NgsArgs;
 
 abstract class AbstractLoad extends AbstractRequest
 {
-    public const REQUEST_TYPE = "action";
+    public const REQUEST_TYPE = "load";
 
     protected array $parentParams = [];
     private array $jsonParam = [];

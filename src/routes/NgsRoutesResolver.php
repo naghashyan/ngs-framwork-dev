@@ -9,6 +9,15 @@ use ngs\request\AbstractAction;
 use ngs\request\AbstractLoad;
 
 /**
+ * TODO: ZN:
+ * 1. handle the case with the static files
+ * 2. handle not found case
+ * 3. check test cases for all possible routing scenarios
+ * 4. handle nesting case
+ * 5. finalize the clean up for the modules management
+ * 6. check routing from modules
+ * 7. check the constants and config management from modules
+ *
  * Class NgsRoutesResolver
  *
  * Resolves URLs to route data and provides per-group 404 info.
@@ -38,7 +47,7 @@ class NgsRoutesResolver
     /**
      * @var array Routes configuration cached per module and package
      */
-    protected array $routes = [];
+    protected array $routesConfigs = [];
 
 
     /**
@@ -67,26 +76,22 @@ class NgsRoutesResolver
         $package = $this->getPackageName($urlSegments);
 
         if ($package === NGS()->get('DYN_URL_TOKEN')) {
-            $route = $this->handleDynamicUrlTokenRouting($module, $urlSegments);
-        }
-        else{
+            $route = $this->handleWithDynamicUrlToken($module, $urlSegments);
+        } else {
             $route = $this->handleWithRouteConfig($module, $package, $urlSegments);
         }
-
-        if ($route->isMatched()) {
-            $route = $this->processMatchedRequest($route);
-        }
+//TODO: ZN: should be revised
+//        $notFoundRoute = $this->getNotFoundRouteForRequest();
+//
+//        $route->setNotFoundRequest($notFoundRoute);
 
         if (!$route->isMatched() && $isStaticFile) {
             $route = $this->handleStaticFile($urlSegments, [], $fileUrl, $isStaticFile, $module);
             $package = $route->getModule();
         }
 
-        // Set the module in the route
-        $route->setModule($module);
-
         // Attach per-group notFoundRequest
-        $routesConfig = $this->getRouteConfig($module);
+        $routesConfig = $this->getRoutesConfig($module);
 
         if (isset($routesConfig[$package]['404']['request'])) {
             $route->setNotFoundRequest($routesConfig[$package]['404']['request']);
@@ -96,8 +101,6 @@ class NgsRoutesResolver
 
         return $route;
     }
-
-
 
 
     //-----------------------------------------------------------------------------------
@@ -114,14 +117,31 @@ class NgsRoutesResolver
      *
      * @return NgsRoute The configured route object
      */
-    private function handleDynamicUrlTokenRouting(\ngs\NgsModule $module, array $urlSegments): NgsRoute
+    private function handleWithDynamicUrlToken(\ngs\NgsModule $module, array $urlSegments): NgsRoute
     {
-        $package = $this->getPackageName($urlSegments);
+        $routePackage = $this->getPackageName($urlSegments);
 
         $requestIdentifier = $this->getRequestIdentifier($urlSegments);
         $args = $this->getArguments($urlSegments);
 
-        $route = $this->createRoute($module, $package, $requestIdentifier, $args);
+        $route = new NgsRoute();
+
+        $requestPackage = NGS()->get('LOADS_DIR');
+        $requestType = AbstractLoad::REQUEST_TYPE;
+
+        if (strrpos($requestIdentifier, self::ACTIONS_PREFIX) !== false) {
+            $requestPackage = NGS()->get('ACTIONS_DIR');
+            $requestType = AbstractAction::REQUEST_TYPE;
+        }
+
+        $moduleName = $module->getName();
+
+        $requestClassPath = $this->getRequestClassPath($moduleName, $requestPackage, $routePackage, $requestIdentifier);
+
+        $route->setRequest($requestClassPath);
+        $route->setType($requestType);
+        $route->setArgs($args);
+        $route->setMatched(true);
 
         return $route;
     }
@@ -135,6 +155,7 @@ class NgsRoutesResolver
      * @param array $parsed Parsed URL components
      *
      * @return NgsRoute The configured route object
+     * @throws NotFoundException
      */
     private function handleWithRouteConfig(\ngs\NgsModule $module, string $package, array $segments): NgsRoute
     {
@@ -144,41 +165,35 @@ class NgsRoutesResolver
         // Remaining segments are considered arguments
         $args = $this->getArguments($segments);
 
-        $routes = $this->getRouteConfig($module, $package);
+        $routesConfig = $this->getRoutesConfig($module, $package);
+
+        if ($routesConfig === null) {
+            throw new NotFoundException('Routes configuration not found');
+        }
+
+        $matchedRouteConfig = $this->getMatchedRouteConfig($routesConfig, $requestIdentifier);
+
+        $matchRequestType = $matchedRouteConfig->getRequestType();
+
+        if ($matchRequestType === AbstractAction::REQUEST_TYPE) {
+            $requestPackage = NGS()->get('ACTIONS_DIR');
+        } else {
+            $requestPackage = NGS()->get('LOADS_DIR');
+        }
+
+        $matchedRoutePackage = $matchedRouteConfig->getPackage();
+        $matchedRouteIdentifier = $matchedRouteConfig->getRequestIdentifier();
+        $moduleName = $module->getName();
+
+        $requestClassPath = $this->getRequestClassPath($moduleName, $requestPackage, $matchedRoutePackage, $matchedRouteIdentifier);
 
         $route = new NgsRoute();
 
-        if ($routes === null) {
-            // Not found, return empty NgsRoute (matched=false)
-            $route->setMatched(false);
-            return $route;
-        }
-
-        $matchedRoutesConfig = $this->getMatchedRoutesArray($routes, $requestIdentifier);
-        [$foundRoute, $args, $isDynamicRoute] = $this->findMatchingRoute($matchedRoutesConfig, $segments);
-
-        if ($args === null && !isset($foundRoute['request'])) {
-           //TODO: ZN: handle this case
-        }
-
-        $args = $foundRoute['args'] ?? [];
-
-        $requestName = $this->determineRequestName($module, $foundRoute);
-
-        $route->setRequest($requestName);
+        $route->setRequest($requestClassPath);
+        $route->setType($matchRequestType);
         $route->setArgs($args);
         $route->setMatched(true);
-        $route->setType($foundRoute['type'] ?? null);
-
-        // Use the module instance if provided, otherwise use the module from the found route
-        if ($module !== null) {
-            $route->setModule($module);
-        } else {
-            $route->setModule($foundRoute['module'] ?? null);
-        }
-
-        $route->setFileType($foundRoute['fileType'] ?? null);
-        $route->setFileUrl($foundRoute['fileUrl'] ?? null);
+        $route->setModule($module);
 
         return $route;
     }
@@ -224,210 +239,40 @@ class NgsRoutesResolver
         return $route;
     }
 
-
-
     /**
-     * Process a matched request
-     *
-     * Updates the route with additional information based on the request.
-     *
-     * @param NgsRoute $route The route to process
-     *
-     * @return NgsRoute The processed route
+     * @param string $moduleName
+     * @param mixed $requestPackage Loads or Actions
+     * @param string|null $routePackage
+     * @param string|null $requestIdentifier
+     * @return string
      */
-    private function processMatchedRequest(NgsRoute $route): NgsRoute
+    private function getRequestClassPath(string $moduleName, mixed $requestPackage, ?string $routePackage, ?string $requestIdentifier): string
     {
-        $requestInfo = $this->getRequestInfoByRequest($route->getRequest());
-        $route->setType($requestInfo['type'] ?? null);
-        $route->setRequest($requestInfo['request'] ?? null);
-        return $route;
-    }
+        // Apply logic similar to getRequestInfoByRequest
+        $requestName = $requestIdentifier;
+        $classPrefix = '';
 
-    /**
-     * Get standard routes for a namespace and URL parts
-     *
-     * Creates a route based on standard routing conventions.
-     *
-     * @param string|null $routePackage Package of the request
-     * @param array $urlSegments URL segments array
-     *
-     * @return NgsRoute The configured route object
-     */
-    private function createRoute(\ngs\NgsModule $module, string $routePackage, string $requestIdentifier, array $args): NgsRoute
-    {
-        $route = new NgsRoute();
-
-        $requestPackage = NGS()->get('LOADS_DIR');
-        $requestType = AbstractLoad::REQUEST_TYPE;
-
-        if (strrpos($requestIdentifier, self::ACTIONS_PREFIX) !== false) {
-            $requestPackage = NGS()->get('ACTIONS_DIR');
-            $requestType = AbstractAction::REQUEST_TYPE;
+        // Determine class prefix based on request package type
+        if ($requestPackage === NGS()->get('ACTIONS_DIR')) {
+            $classPrefix = 'Action';
+        } elseif ($requestPackage === NGS()->get('LOADS_DIR')) {
+            $classPrefix = 'Load';
         }
 
-        $moduleName = $module->getName();
-
-        $requestClassPath = $moduleName . '.' . $requestPackage . '.' . $routePackage . '.' . $requestIdentifier;
-
-        $route->setRequest($requestClassPath);
-        $route->setType($requestType);
-        $route->setArgs($args);
-        $route->setMatched(true);
-
-        $notFoundRoute = $this->getNotFoundRouteForRequest();
-
-        $route->setNotFoundRequest($notFoundRoute);
-
-        return $route;
-    }
-
-    //-----------------------------------------------------------------------------------
-    // Route Matching Methods
-    //-----------------------------------------------------------------------------------
-
-    /**
-     * Get matched routes array for a package
-     *
-     * Retrieves the appropriate routes array based on the package name.
-     *
-     * @param array $routes Routes configuration
-     * @param string $requestIdentifier Package name
-     *
-     * @return array Matched routes array
-     */
-    private function getMatchedRoutesArray(array $routes, ?string $requestIdentifier): array
-    {
-        if($requestIdentifier === null){
-            $requestIdentifier = self::DEFAULT_REQUEST_IDENTIFIER;
+        // Handle 'do_' prefix removal (similar to getRequestInfoByRequest logic)
+        if (strrpos($requestName, 'do_') !== false) {
+            $requestName = str_replace('do_', '', $requestName);
         }
 
-        if ($requestIdentifier === '404') {
-            return [$routes[self::DEFAULT_REQUEST_IDENTIFIER][$requestIdentifier]];
-        }
-        if ($requestIdentifier === self::DEFAULT_REQUEST_IDENTIFIER) {
-            return [[$requestIdentifier => $routes[$requestIdentifier]]];
-        }
-        return $routes[$requestIdentifier];
-    }
+        // Convert snake_case to PascalCase and add class prefix
+        $requestName = preg_replace_callback('/_(\w)/', function ($m) {
+                return strtoupper($m[1]);
+            }, ucfirst($requestName)) . $classPrefix;
 
-    /**
-     * Find a matching route in the routes array
-     *
-     * Iterates through the routes array to find a matching route.
-     *
-     * @param array $matchedRoutesArr Routes array to search in
-     * @param array $urlPartsArr URL parts to match against
-     *
-     * @return array Array containing [foundRoute, args, isDynamicRoute]
-     */
-    private function findMatchingRoute(array $matchedRoutesArr, array $urlPartsArr): array
-    {
-        $isDynamicRoute = false;
-        $args = null;
-        $foundRoute = [];
+        // Build the class path with proper namespace separators (backslashes)
+        $requestClassPath = $moduleName . '\\' . $requestPackage . '\\' . $routePackage . '\\' . $requestName;
 
-        foreach ($matchedRoutesArr as $route) {
-            $foundRoute = [];
-
-            if (isset($route[self::DEFAULT_REQUEST_IDENTIFIER])) {
-                $result = $this->processDefaultRoute($route);
-                if ($result !== null) {
-                    [$foundRoute, $routeIsDynamic, $shouldContinue] = $result;
-                    $isDynamicRoute = $routeIsDynamic;
-                    if ($shouldContinue) {
-                        continue;
-                    }
-                    break;
-                }
-            }
-
-            if (!$this->isHttpMethodMatching($route)) {
-                continue;
-            }
-
-            $matchResult = $this->tryMatchRoute($route, $urlPartsArr);
-            if ($matchResult['matched']) {
-                $foundRoute = $matchResult['route'];
-                $args = $matchResult['args'];
-                break;
-            }
-        }
-
-        return [$foundRoute, $args, $isDynamicRoute];
-    }
-
-    /**
-     * Process default route
-     *
-     * Handles special cases for default routes.
-     *
-     * @param array $route Route configuration
-     *
-     * @return array|null Array containing [foundRoute, isDynamicRoute, shouldContinue] or null
-     */
-    private function processDefaultRoute(array $route): ?array
-    {
-        if ($route[self::DEFAULT_REQUEST_IDENTIFIER] === NGS()->get('DYN_URL_TOKEN')) {
-            return [[], true, true];
-        }
-        if (isset($route[self::DEFAULT_REQUEST_IDENTIFIER]['request'], $route[self::DEFAULT_REQUEST_IDENTIFIER]['404']) && isset($_GET['is404']) && $_GET['is404'] === true) {
-            return [$route[self::DEFAULT_REQUEST_IDENTIFIER]['404'], false, false];
-        }
-        return [$route[self::DEFAULT_REQUEST_IDENTIFIER], false, false];
-    }
-
-    /**
-     * Check if HTTP method matches the route
-     *
-     * Verifies that the current HTTP method matches the method specified in the route.
-     *
-     * @param array $route Route configuration
-     *
-     * @return bool True if the method matches or no method is specified
-     */
-    private function isHttpMethodMatching(array $route): bool
-    {
-        if (!isset($route['method'])) {
-            return true;
-        }
-        $requestContext = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class);
-        $requestMethod = $requestContext->getRequestHttpMethod();
-        return strtolower($route['method']) === strtolower($requestMethod);
-    }
-
-    /**
-     * Try to match a route against URL parts
-     *
-     * Attempts to match the given route against the URL parts.
-     *
-     * @param array $route Route configuration
-     * @param array $urlPartsArr URL parts to match against
-     *
-     * @return array Match result with 'matched', 'route', and 'args' keys
-     */
-    private function tryMatchRoute(array $route, array $urlPartsArr): array
-    {
-        $foundRoute = $route;
-        $args = $this->getMatchedRoute($urlPartsArr, $foundRoute);
-
-        if (!isset($foundRoute['args'])) {
-            $foundRoute['args'] = [];
-        }
-
-        if ($args !== null && is_array($args)) {
-            $foundRoute['args'] = array_merge($foundRoute['args'], $args);
-            return [
-                'matched' => true,
-                'route' => $foundRoute,
-                'args' => $args
-            ];
-        }
-
-        return [
-            'matched' => false,
-            'route' => [],
-            'args' => null
-        ];
+        return $requestClassPath;
     }
 
     /**
@@ -443,216 +288,9 @@ class NgsRoutesResolver
         throw new DebugException('No Matched Routes');
     }
 
-    /**
-     * Get matched route parameters from URI
-     *
-     * Determines if the route is simple or constrained and calls the appropriate matcher.
-     *
-     * @param array $uriParams URI parameters
-     * @param array $routeArr Route configuration
-     *
-     * @return array|null Matched parameters or null if no match
-     */
-    private function getMatchedRoute(array $uriParams, array $routeArr): ?array
-    {
-        $route = $routeArr['route'] ?? '';
-
-        if (strpos($route, '[:') === false && strpos($route, '[/:') === false) {
-            return $this->matchSimpleRoute($uriParams, $route);
-        }
-
-        return $this->matchConstrainedRoute($uriParams, $routeArr);
-    }
-
-    /**
-     * Match a simple route without constraints
-     *
-     * Matches a route that doesn't contain any parameter constraints.
-     *
-     * @param array $uriParams URI parameters
-     * @param string $route Route pattern
-     *
-     * @return array|null Matched parameters or null if no match
-     */
-    private function matchSimpleRoute(array $uriParams, string $route): ?array
-    {
-        $fullUri = implode('/', $uriParams);
-
-        if (isset($route[0]) && strpos($route, '/') === 0) {
-            $route = substr($route, 1);
-        }
-
-        $routePattern = str_replace('/', '\/', $route) . '\/';
-
-        $newUri = preg_replace('/^' . $routePattern . '$/', '', $fullUri . '/', -1, $count);
-
-        if ($count === 0) {
-            return null;
-        }
-
-        preg_match_all('/([^\/\?]+)/', $newUri, $matches);
-        return $matches[1];
-    }
-
-    /**
-     * Match a constrained route
-     *
-     * Matches a route that contains parameter constraints.
-     *
-     * @param array $uriParams URI parameters
-     * @param array $routeArr Route configuration
-     *
-     * @return array|null Matched parameters or null if no match
-     */
-    private function matchConstrainedRoute(array $uriParams, array $routeArr): ?array
-    {
-        $routeUrlExp = $routeArr['route'];
-        $originalUrl = '/' . implode('/', $uriParams);
-
-        $routeUrlExp = $this->processConstraints($routeUrlExp, $routeArr, $routeArr['route']);
-        $routeUrlExp = str_replace('/', '\/', $routeUrlExp);
-
-        preg_match('/^\/' . trim($routeUrlExp, '\/') . '$/', $originalUrl, $matches);
-
-        if (!$matches) {
-            return null;
-        }
-
-        return $this->extractNamedParameters($matches, $routeArr['constraints']);
-    }
-
-    //-----------------------------------------------------------------------------------
-    // Constraint Processing Methods
-    //-----------------------------------------------------------------------------------
-
-    /**
-     * Process constraints in a route
-     *
-     * Replaces constraint placeholders with regex patterns.
-     *
-     * @param string $routeUrlExp Route URL expression
-     * @param array $routeArr Route configuration
-     * @param string $route Original route string
-     *
-     * @return string Processed route URL expression
-     * @throws DebugException If constraints and route parameters don't match
-     */
-    private function processConstraints(string $routeUrlExp, array $routeArr, string $route): string
-    {
-        foreach ((array)$routeArr['constraints'] as $item => $constraint) {
-            if (strpos($routeUrlExp, ':' . $item) === false) {
-                throw new DebugException(
-                    'Constraints and route parameters do not match. Please check in ' .
-                    NGS()->get('NGS_ROUTS') . ' in this route section: ' . $route
-                );
-            }
-
-            $routeUrlExp = $this->replaceConstraintPlaceholder($routeUrlExp, $item, $constraint);
-        }
-
-        return $routeUrlExp;
-    }
-
-    /**
-     * Replace constraint placeholder with regex pattern
-     *
-     * Replaces a constraint placeholder with the appropriate regex pattern.
-     *
-     * @param string $routeUrlExp Route URL expression
-     * @param string $item Constraint name
-     * @param string $constraint Constraint pattern
-     *
-     * @return string Route URL expression with replaced placeholder
-     */
-    private function replaceConstraintPlaceholder(string $routeUrlExp, string $item, string $constraint): string
-    {
-        if (strpos($routeUrlExp, '/:' . $item) === false) {
-            return str_replace(
-                '[:' . $item . ']',
-                '(?<' . $item . '>' . $constraint . ')',
-                $routeUrlExp
-            );
-        } else {
-            return str_replace(
-                '[/:' . $item . ']',
-                '/?(?<' . $item . '>' . $constraint . ')?',
-                $routeUrlExp
-            );
-        }
-    }
-
-    /**
-     * Extract named parameters from matches
-     *
-     * Extracts named parameters from regex matches based on constraints.
-     *
-     * @param array $matches Regex matches
-     * @param array $constraints Constraints configuration
-     *
-     * @return array Named parameters
-     */
-    private function extractNamedParameters(array $matches, array $constraints): array
-    {
-        $urlMatchArgs = [];
-
-        foreach ($constraints as $item => $constraint) {
-            if (isset($matches[$item])) {
-                $urlMatchArgs[$item] = $matches[$item];
-            }
-        }
-
-        return $urlMatchArgs;
-    }
-
     //-----------------------------------------------------------------------------------
     // Package and Request Handling Methods
     //-----------------------------------------------------------------------------------
-
-    /**
-     * Get request information by request string
-     *
-     * Parses a request string into module, type, and class name.
-     *
-     * @param string|null $request Request string
-     *
-     * @return array|null Request information or null if request is empty
-     */
-    private function getRequestInfoByRequest(?string $request = null): ?array
-    {
-        if (!$request) {
-            return null;
-        }
-        $pathArr = explode('.', $request);
-        $requestName = array_splice($pathArr, count($pathArr) - 1);
-        $requestName = $requestName[0];
-        $module = array_splice($pathArr, 0, 1);
-        $module = $module[0];
-        $requestType = '';
-        $classPrefix = '';
-
-        foreach ($pathArr as $v) {
-            if ($v === NGS()->get('ACTIONS_DIR')) {
-                $requestType = 'action';
-                $classPrefix = 'Action';
-                break;
-            }
-            if ($v === NGS()->get('LOADS_DIR')) {
-                $requestType = 'load';
-                $classPrefix = 'Load';
-                break;
-            }
-        }
-        if (strrpos($requestName, 'do_') !== false) {
-            $requestName = str_replace('do_', '', $requestName);
-        }
-        $requestName = preg_replace_callback('/_(\w)/', function ($m) {
-                return strtoupper($m[1]);
-            }, ucfirst($requestName)) . $classPrefix;
-        return [
-            'request' => $module . '\\' . implode('\\', $pathArr) . '\\' . $requestName,
-            'type' => $requestType
-        ];
-    }
 
     /**
      * Determine package and file URL from URL matches
@@ -724,36 +362,54 @@ class NgsRoutesResolver
         return $route;
     }
 
-    /**
-     * Determine request name from found route
-     *
-     * Constructs the full request name from the namespace and action.
-     *
-     * @param array $foundRoute Found route configuration
-     *
-     * @return string Full request name
-     */
-    private function determineRequestName(\ngs\NgsModule $module, array $foundRoute): string
+    private function getNotFoundRouteForRequest(NgsModule $module, string $package)
     {
-        $requestNS = $this->determineRequestNamespace($module);
+        $routeConfig = $this->getRoutesConfig($module, $package);
 
-        $requestName = $requestNS . '.' . $foundRoute['action'];
 
-        return $requestName;
     }
 
+    //-----------------------------------------------------------------------------------
+    // Route Config Management Methods
+    //-----------------------------------------------------------------------------------
+
     /**
-     * Determine request namespace from found route
+     * Get route configuration for the specified package
      *
-     * Extracts the namespace part from the action or uses the default namespace.
+     * Loads route configuration from JSON files and caches it.
+     * If module routes are defined, they are merged with the main routes.
      *
-     * @param array $foundRoute Found route configuration
+     * @param string|null $package Package name, or null to use default
      *
-     * @return string Request namespace
+     * @return array|null Route configuration array or null if not found
      */
-    private function determineRequestNamespace(\ngs\NgsModule $module): string
+    private function getRoutesConfig(\ngs\NgsModule $module, ?string $package = null): ?array
     {
-        return $module->getName();
+        if (!$package) {
+            $package = NGS()->get('NGS_ROUTS');
+        }
+
+        // Create cache key combining module name and package
+        $cacheKey = $module->getName() . ':' . $package;
+
+        // Return cached routes if available
+        if (isset($this->routesConfigs[$cacheKey])) {
+            return $this->routesConfigs[$cacheKey];
+        }
+
+        $routeFile = realpath($this->getRoutesDir($module) . '/' . $package . '.json');
+
+        if (!$routeFile || !file_exists($routeFile)) {
+            $routeFile = $this->getRoutesDir($module) . '/' . NGS()->get('NGS_ROUTS');
+        }
+
+        if (file_exists($routeFile)) {
+            $this->routesConfigs[$cacheKey] = json_decode(file_get_contents($routeFile), true);
+        } else {
+            $this->routesConfigs[$cacheKey] = null;
+        }
+
+        return $this->routesConfigs[$cacheKey];
     }
 
     /**
@@ -769,128 +425,98 @@ class NgsRoutesResolver
     }
 
     /**
-     * Match a route against URL and routes configuration
+     * Get matched route configuration for a request identifier
      *
-     * This method is designed for testing purposes. It takes a URL string and routes array
-     * and returns matching route information with extracted parameters.
+     * Finds the appropriate route configuration that matches the request identifier.
+     * Handles exact matching, parameterized routes, and constraint validation.
      *
-     * @param string $url The URL to match
-     * @param array $routes Routes configuration array
+     * @param array $routesConfigArray Array of route configurations
+     * @param string $requestIdentifier URL segment to match
      *
-     * @return array|null Array with 'route' and 'params' keys if matched, null otherwise
+     * @return NgsRouteConfig Matched route configuration
+     * @throws NotFoundException When no route matches
      */
-    public function matchRoute(string $url, array $routes): ?array
+    private function getMatchedRouteConfig(array $routesConfigArray, string $requestIdentifier): NgsRouteConfig
     {
-        // Handle empty URL as default route
-        if ($url === '' && isset($routes['default'])) {
-            return [
-                'route' => $routes['default'],
-                'params' => []
-            ];
-        }
+        // Step 1: Try exact matching first
+        foreach ($routesConfigArray as $routeConfig) {
+            $routePattern = $routeConfig['route'] ?? '';
 
-        // Convert URL to segments
-        $urlSegments = $this->getUrlSegments($url);
-
-        // Try to match each route
-        foreach ($routes as $routeName => $routeConfig) {
-            // Skip default route if URL is not empty
-            if ($routeName === 'default' && $url !== '') {
-                continue;
-            }
-
-            // Handle routes without explicit route pattern (exact match)
-            if (!isset($routeConfig['route'])) {
-                if ($url === '') {
-                    return [
-                        'route' => $routeConfig,
-                        'params' => []
-                    ];
-                }
-                continue;
-            }
-
-            $routePattern = $routeConfig['route'];
-
-            // Handle exact match
-            if ($routePattern === $url) {
-                return [
-                    'route' => $routeConfig,
-                    'params' => []
-                ];
-            }
-
-            // Handle parameterized routes
-            if (strpos($routePattern, '[:') !== false || strpos($routePattern, '[/:') !== false) {
-                $matchResult = $this->matchParameterizedRoute($url, $routeConfig);
-                if ($matchResult !== null) {
-                    return $matchResult;
-                }
+            // Handle exact string match
+            if ($routePattern === $requestIdentifier) {
+                return NgsRouteConfig::fromArray($routeConfig);
             }
         }
 
-        return null;
+        // Step 2: Try parameterized route matching
+        foreach ($routesConfigArray as $routeConfig) {
+            $routePattern = $routeConfig['route'] ?? '';
+            $constraints = $routeConfig['constraints'] ?? [];
+
+            // Skip if no parameters in route
+            if (strpos($routePattern, ':') === false) {
+                continue;
+            }
+
+            $matchResult = $this->matchParameterizedRoutePattern($requestIdentifier, $routePattern, $constraints);
+            if ($matchResult !== null) {
+                // Store extracted parameters in args
+                if (!empty($matchResult)) {
+                    $existingArgs = $routeConfig['args'] ?? [];
+                    $routeConfig['args'] = array_merge($existingArgs, $matchResult);
+                }
+                return NgsRouteConfig::fromArray($routeConfig);
+            }
+        }
+
+        // Step 3: No match found, throw exception
+        throw new NotFoundException('No matching route found for: ' . $requestIdentifier);
     }
 
     /**
-     * Match a parameterized route
+     * Match a parameterized route pattern against a request identifier
      *
-     * @param string $url The URL to match
-     * @param array $routeConfig Route configuration
+     * @param string $requestIdentifier The URL segment to match
+     * @param string $routePattern The route pattern with parameters
+     * @param array $constraints Parameter constraints (regex patterns)
      *
-     * @return array|null Match result or null
+     * @return array|null Extracted parameters or null if no match
      */
-    private function matchParameterizedRoute(string $url, array $routeConfig): ?array
+    private function matchParameterizedRoutePattern(string $requestIdentifier, string $routePattern, array $constraints): ?array
     {
-        $routePattern = $routeConfig['route'];
-        $constraints = $routeConfig['constraints'] ?? [];
+        // Convert route pattern to regex
+        $regexPattern = $this->convertRoutePatternToRegex($routePattern, $constraints);
 
-        // Process the route pattern to create regex
-        $regexPattern = $this->createRegexFromRoute($routePattern, $constraints);
+        // Try to match
+        if (preg_match($regexPattern, $requestIdentifier, $matches)) {
+            $extractedParams = [];
 
-        // Try to match the URL
-        if (preg_match($regexPattern, $url, $matches)) {
             // Extract named parameters
-            $params = [];
             foreach ($constraints as $paramName => $constraint) {
                 if (isset($matches[$paramName]) && $matches[$paramName] !== '') {
-                    $params[$paramName] = $matches[$paramName];
+                    $extractedParams[$paramName] = $matches[$paramName];
                 }
             }
 
-            return [
-                'route' => $routeConfig,
-                'params' => $params
-            ];
+            return $extractedParams;
         }
 
         return null;
     }
 
     /**
-     * Create regex pattern from route with parameters
+     * Convert route pattern with parameters to regex pattern
      *
-     * @param string $routePattern Route pattern
+     * @param string $routePattern Route pattern (e.g., "user/:id/order/:orderId")
      * @param array $constraints Parameter constraints
      *
      * @return string Regex pattern
      */
-    private function createRegexFromRoute(string $routePattern, array $constraints): string
+    private function convertRoutePatternToRegex(string $routePattern, array $constraints): string
     {
         $pattern = $routePattern;
 
-        // Replace required parameters [:param]
-        foreach ($constraints as $paramName => $constraint) {
-            if (strpos($pattern, '[:' . $paramName . ']') !== false) {
-                $pattern = str_replace(
-                    '[:' . $paramName . ']',
-                    '(?<' . $paramName . '>' . $constraint . ')',
-                    $pattern
-                );
-            }
-        }
-
-        // Replace optional parameters [/:param]
+        // Handle optional parameters [/:param] first (before required ones to avoid conflicts)
         foreach ($constraints as $paramName => $constraint) {
             if (strpos($pattern, '[/:' . $paramName . ']') !== false) {
                 $pattern = str_replace(
@@ -901,60 +527,34 @@ class NgsRoutesResolver
             }
         }
 
+        // Handle required parameters [:param] and :param
+        foreach ($constraints as $paramName => $constraint) {
+            // Handle [:param] syntax (required parameter)
+            if (strpos($pattern, '[:' . $paramName . ']') !== false) {
+                $pattern = str_replace(
+                    '[:' . $paramName . ']',
+                    '(?<' . $paramName . '>' . $constraint . ')',
+                    $pattern
+                );
+            } // Handle :param syntax (required parameter)
+            elseif (strpos($pattern, ':' . $paramName) !== false) {
+                $pattern = str_replace(
+                    ':' . $paramName,
+                    '(?<' . $paramName . '>' . $constraint . ')',
+                    $pattern
+                );
+            }
+        }
+
         // Escape forward slashes for regex
         $pattern = str_replace('/', '\/', $pattern);
 
+        // Return complete regex pattern
         return '/^' . $pattern . '$/';
     }
 
-    private function getNotFoundRouteForRequest(NgsModule $module, string $package){
-        $routeConfig = $this->getRouteConfig($module, $package);
-
-
-    }
-
-    /**
-     * Get route configuration for the specified package
-     *
-     * Loads route configuration from JSON files and caches it.
-     * If module routes are defined, they are merged with the main routes.
-     *
-     * @param string|null $package Package name, or null to use default
-     *
-     * @return array|null Route configuration array or null if not found
-     */
-    private function getRouteConfig(\ngs\NgsModule $module, ?string $package = null): ?array
-    {
-        if (!$package) {
-            $package = NGS()->get('NGS_ROUTS');
-        }
-
-        // Create cache key combining module name and package
-        $cacheKey = $module->getName() . ':' . $package;
-
-        // Return cached routes if available
-        if (isset($this->routes[$cacheKey])) {
-            return $this->routes[$cacheKey];
-        }
-
-        $routeFile = realpath($this->getRoutesDir($module) . '/' . $package . '.json');
-
-        if (!$routeFile || !file_exists($routeFile)) {
-            $routeFile = $this->getRoutesDir($module) . '/' . NGS()->get('NGS_ROUTS');
-        }
-
-        if (file_exists($routeFile)) {
-            $this->routes[$cacheKey] = json_decode(file_get_contents($routeFile), true);
-        } else {
-            $this->routes[$cacheKey] = null;
-        }
-
-        return $this->routes[$cacheKey];
-    }
-
-
     //-----------------------------------------------------------------------------------
-    // URL Parsing and Normalization Methods
+    // URL Parsing Methods
     //-----------------------------------------------------------------------------------
 
     /**
@@ -1020,8 +620,7 @@ class NgsRoutesResolver
 
         if ($package === null || $package === '') {
             $package = self::DEFAULT_PACKAGE_IDENTIFIER;
-        }
-        else if (strpos($package, '_') !== false) {
+        } else if (strpos($package, '_') !== false) {
             $package = str_replace('_', '.', $package);
         }
 
@@ -1059,6 +658,4 @@ class NgsRoutesResolver
         $urlSegments = []; // Clear segments array after extracting arguments
         return $args;
     }
-
-
 }
