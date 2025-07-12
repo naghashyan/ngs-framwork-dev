@@ -67,7 +67,7 @@ class NgsRoutesResolver
         // Get URL segments
         $urlSegments = $this->getUrlSegments($url);
 
-        // Determine if URL points to a static file, checking here becuase after this we might break the segments
+        // Determine if URL points to a static file, checking here because after this we might break the segments
         $isStaticFile = $this->isStaticFile($urlSegments);
 
         $this->checkAndShiftModuleName($module, $urlSegments);
@@ -86,7 +86,13 @@ class NgsRoutesResolver
 //        $route->setNotFoundRequest($notFoundRoute);
 
         if (!$route->isMatched() && $isStaticFile) {
-            $route = $this->handleStaticFile($urlSegments, [], $fileUrl, $isStaticFile, $module);
+            $parsed = [
+                'ngsRequestMatches' => $urlSegments,
+                'segments' => $urlSegments,
+                'fileUrl' => implode('/', $urlSegments),
+                'module' => $module
+            ];
+            $route = $this->handleStaticFile($parsed);
             $package = $route->getModule();
         }
 
@@ -205,17 +211,16 @@ class NgsRoutesResolver
      *
      * @param array $parsed Parsed URL components
      *
-     * @return NgsRoute The configured route object for the static file
+     * @return NgsFileRoute The configured route object for the static file
      */
-    private function handleStaticFile(array $parsed): NgsRoute
+    private function handleStaticFile(array $parsed): NgsFileRoute
     {
-        $fileUrl = ltrim($url, '/');
         $ngsRequestMatches = $parsed['ngsRequestMatches'];
         $segments = $parsed['segments'];
         $fileUrl = $parsed['fileUrl'];
         $module = $parsed['module'] ?? null;
 
-        $route = new NgsRoute();
+        $route = new NgsFileRoute();
 
         [$package, $fileUrl, $filePieces] = $this->determinePackageAndFileUrl($ngsRequestMatches, $fileUrl);
 
@@ -234,7 +239,7 @@ class NgsRoutesResolver
 
         $route->setFileUrl($fileUrl);
 
-        $route = $this->checkSpecialFileTypesInRoute($route, $filePieces);
+        $route->processSpecialFileTypes($filePieces);
 
         return $route;
     }
@@ -338,29 +343,6 @@ class NgsRoutesResolver
         return $package;
     }
 
-    /**
-     * Check for special file types in route
-     *
-     * Checks if the route contains special file types like less or sass.
-     *
-     * @param NgsRoute $route Route object
-     * @param array $filePieces File path pieces
-     *
-     * @return NgsRoute Updated route object
-     */
-    private function checkSpecialFileTypesInRoute(NgsRoute $route, array $filePieces): NgsRoute
-    {
-        if ($route->getFileType() === 'css') {
-            foreach ($filePieces as $urlPath) {
-                if ($urlPath === 'less' || $urlPath === 'sass') {
-                    $route->setFileType($urlPath);
-                    break;
-                }
-            }
-        }
-
-        return $route;
-    }
 
     private function getNotFoundRouteForRequest(NgsModule $module, string $package)
     {

@@ -25,47 +25,53 @@
 namespace ngs\util;
 
 use ngs\exceptions\DebugException;
+use ngs\NgsModule;
 
 abstract class AbstractBuilder
 {
     private $builderJsonArr = [];
 
     /**
-     * @param string $module
-     * @param string $file
+     * @param string $filePath
      * @throws DebugException
      */
-    public function streamFile(string $module, string $file): void
+    public function streamFile(string $filePath): void
     {
         $fileUtils = NGS()->createDefinedInstance('FILE_UTILS', \ngs\util\FileUtils::class);
+
+        // Extract the file name from the full path for builder operations
+        $file = basename($filePath);
+        $publicDir = NGS()->get('PUBLIC_DIR');
+
         if ($this->getEnvironment() === 'production') {
-            $filePath = realpath((NGS()->getModuleDirByNS('') . '/' . NGS()->get('PUBLIC_DIR')) . '/' . $file);
+            $realFilePath = realpath($filePath);
             if (strpos($file, NGS()->getDefinedValue('PUBLIC_OUTPUT_DIR')) === false) {
-                if (!$filePath) {
-                    throw new DebugException((NGS()->getModuleDirByNS('') . '/' . NGS()->get('PUBLIC_DIR')) . '/' . $file . ' NOT FOUND');
+                if (!$realFilePath) {
+                    throw new DebugException($filePath . ' NOT FOUND');
                 }
-            } elseif (file_exists($filePath) === false) {
+            } elseif (file_exists($realFilePath) === false) {
                 $this->build($file);
             }
-            $fileUtils->sendFile($filePath, ['mimeType' => $this->getContentType(), 'cache' => true]);
+            $fileUtils->sendFile($realFilePath, ['mimeType' => $this->getContentType(), 'cache' => true]);
             return;
         }
+
         if (strpos($file, 'devout') !== false) {
             $realFile = substr($file, strpos($file, '/') + 1);
-
-            $realFile = realpath((NGS()->getModuleDirByNS($module) . '/' . NGS()->get('PUBLIC_DIR')) . '/' . $realFile);
-            if ($realFile === null) {
+            $realFilePath = realpath(dirname($filePath) . '/' . $realFile);
+            if ($realFilePath === false) {
                 throw new DebugException($file . ' not found');
             }
-            $buffer = file_get_contents($realFile);
+            $buffer = file_get_contents($realFilePath);
             $buffer = $this->customBufferUpdates($buffer);
             header('Content-type: ' . $this->getContentType());
             echo $buffer;
             return;
         }
-        $realFile = realpath((NGS()->getModuleDirByNS($module) . '/' . NGS()->get('PUBLIC_DIR')) . '/' . $file);
-        if (file_exists($realFile)) {
-            $fileUtils->sendFile($realFile, ['mimeType' => $this->getContentType(), 'cache' => false]);
+
+        $realFilePath = realpath($filePath);
+        if (file_exists($realFilePath)) {
+            $fileUtils->sendFile($realFilePath, ['mimeType' => $this->getContentType(), 'cache' => false]);
             return;
         }
 

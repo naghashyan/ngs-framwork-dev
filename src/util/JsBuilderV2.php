@@ -25,32 +25,38 @@
 namespace ngs\util;
 
 use ngs\exceptions\DebugException;
+use ngs\NgsModule;
 
 class JsBuilderV2 extends AbstractBuilder
 {
     /**
-     * @param string $module
-     * @param string $file
+     * @param string $filePath
      * @throws DebugException
      */
-    public function streamFile(string $module, string $file): void
+    public function streamFile(string $filePath): void
     {
         if ($this->getEnvironment() === 'development') {
-            $this->streamDevFile($module, $file);
+            $this->streamDevFile($filePath);
             return;
         }
-        parent::streamFile($module, $file);
+        parent::streamFile($filePath);
     }
 
-    public function streamDevFile(string $module, string $file): void
+    public function streamDevFile(string $filePath): void
     {
         $fileUtils = NGS()->createDefinedInstance('FILE_UTILS', \ngs\util\FileUtils::class);
+        $file = basename($filePath);
         $jsFile = substr($file, stripos($file, NGS()->get('JS_DIR')) + strlen(NGS()->get('JS_DIR')) + 1);
-        $realFile = realpath(realpath(NGS()->getModuleDirByNS($module) . '/' . NGS()->get('JS_DIR')) . '/' . $jsFile);
+
+        // Try to find the file in the same directory as the requested file path
+        $baseDir = dirname($filePath);
+        $realFile = realpath($baseDir . '/' . $jsFile);
         if (file_exists($realFile)) {
             $fileUtils->sendFile($realFile, ['mimeType' => $this->getContentType(), 'cache' => false]);
             return;
         }
+
+        // If not found, try to resolve using module structure
         $matches = explode('/', $jsFile);
         $moduleJsDir = realpath(NGS()->getModuleDirByNS($matches[0]) . '/' . NGS()->get('JS_DIR'));
         if (!$moduleJsDir) {
@@ -94,6 +100,9 @@ class JsBuilderV2 extends AbstractBuilder
 
     protected function getItemDir($module)
     {
+        if ($module instanceof \ngs\NgsModule) {
+            return realpath($module->getDir() . '/' . NGS()->get('JS_DIR'));
+        }
         return realpath(NGS()->getModuleDirByNS($module) . '/' . NGS()->get('JS_DIR'));
     }
 

@@ -32,14 +32,15 @@ namespace ngs\util {
     {
         private $sassParser;
 
-        public function streamFile(string $module, string $file): void
+        public function streamFile(string $filePath): void
         {
+            $file = basename($filePath);
             if ($this->getEnvironment() === "production") {
-                $filePath = realpath((NGS()->getModuleDirByNS('') . '/' . NGS()->get('PUBLIC_DIR')) . "/" . $file);
-                if (!$filePath) {
+                $realFilePath = realpath($filePath);
+                if (!$realFilePath) {
                     $this->build($file, true);
                 }
-                NGS()->createDefinedInstance('FILE_UTILS', \ngs\util\FileUtils::class)->sendFile($filePath, ["mimeType" => $this->getContentType(), "cache" => true]);
+                NGS()->createDefinedInstance('FILE_UTILS', \ngs\util\FileUtils::class)->sendFile($realFilePath, ["mimeType" => $this->getContentType(), "cache" => true]);
                 return;
             }
             $this->build($file, false);

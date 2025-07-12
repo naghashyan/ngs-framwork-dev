@@ -30,6 +30,7 @@ use ngs\exceptions\NoAccessException;
 use ngs\exceptions\NotFoundException;
 use ngs\exceptions\RedirectException;
 use ngs\routes\NgsRoutesResolver;
+use ngs\routes\NgsFileRoute;
 use ngs\util\NgsArgs;
 use ngs\util\NgsEnvironmentContext;
 
@@ -103,7 +104,7 @@ class Dispatcher
             }
 
             //TODO: MJ: for what is this?
-            if ($route->getFileUrl() !== null && str_contains($route->getFileUrl(), 'js/ngs')) {
+            if ($route instanceof NgsFileRoute && $route->getFileUrl() !== null && str_contains($route->getFileUrl(), 'js/ngs')) {
                 $route->setFileUrl(str_replace("js/ngs", "js/admin/ngs", $route->getFileUrl()));
             }
 
@@ -493,27 +494,15 @@ class Dispatcher
     /**
      * Streams a static file to the client
      *
-     * @param \ngs\routes\NgsRoute $route The file information object
+     * @param NgsFileRoute $route The file information object
      * 
      * @return void
      */
-    private function streamStaticFile(\ngs\routes\NgsRoute $route): void
+    private function streamStaticFile(NgsFileRoute $route): void
     {
         $module = $route->getModule();
 
-        // Handle both string and NgsModule instance
-        if (is_string($module)) {
-            // For backward compatibility, get the module instance from the module name
-            $moduleResolver = \ngs\routes\NgsModuleResolver::getInstance();
-            $moduleInstance = $moduleResolver->resolveModule('/' . $module);
-            if ($moduleInstance === null) {
-                throw new NotFoundException('Module not found: ' . $module);
-            }
-            $moduleDir = $moduleInstance->getDir();
-        } else {
-            // Module is already an NgsModule instance
-            $moduleDir = $module->getDir();
-        }
+        $moduleDir = $module->getDir();
 
         $publicDirForModule = realpath($moduleDir . '/' . NGS()->get('PUBLIC_DIR'));
         $filePath = realpath($publicDirForModule . '/' . $route->getFileUrl());
@@ -544,7 +533,7 @@ class Dispatcher
             }
         }
 
-        $streamer->streamFile($route->getModule(), $route->getFileUrl());
+        $streamer->streamFile($filePath);
     }
 
     /**

@@ -13,8 +13,6 @@ namespace ngs\routes;
  * @property bool        $matched           True if the route was matched/resolved, false otherwise
  * @property string|null $type              Type of request (e.g. 'load', 'action', 'file')
  * @property string|null $module            Module/namespace for this request
- * @property string|null $fileType          If file route: extension/type (e.g. 'css', 'jpg')
- * @property string|null $fileUrl           If file route: the file path/URL
  * @property string|null $notFoundRequest   The per-group 404 request identifier (if defined for this route group)
  */
 class NgsRoute
@@ -44,15 +42,6 @@ class NgsRoute
      */
     private $module = null;
 
-    /**
-     * @var string|null File type/extension, for static file routes
-     */
-    private ?string $fileType = null;
-
-    /**
-     * @var string|null File path/URL, for static file routes
-     */
-    private ?string $fileUrl = null;
 
     /**
      * @var string|null Per-group 404 request identifier (for rendering the correct not found page)
@@ -169,37 +158,6 @@ class NgsRoute
         return $this->module;
     }
 
-    /**
-     * Get the file type (for file/static routes).
-     */
-    public function getFileType(): ?string
-    {
-        return $this->fileType;
-    }
-
-    /**
-     * Set the file type (for file/static routes).
-     */
-    public function setFileType(?string $fileType): void
-    {
-        $this->fileType = $fileType;
-    }
-
-    /**
-     * Get the file URL (for file/static routes).
-     */
-    public function getFileUrl(): ?string
-    {
-        return $this->fileUrl;
-    }
-
-    /**
-     * Set the file URL (for file/static routes).
-     */
-    public function setFileUrl(?string $fileUrl): void
-    {
-        $this->fileUrl = $fileUrl;
-    }
 
     /**
      * Get the per-group not-found request identifier.

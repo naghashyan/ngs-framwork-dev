@@ -28,19 +28,18 @@ namespace ngs\util;
 use Exception;
 use ngs\exceptions\DebugException;
 use ngs\util\NgsEnvironmentContext;
+use ngs\NgsModule;
 
 class FileUtils
 {
     /**
-     * @param string $module
-     * @param string $file
+     * @param string $filePath
      * @throws DebugException
      */
-    public function streamFile(string $module, string $file): void
+    public function streamFile(string $filePath): void
     {
-        $modulePublicDir = realpath(NGS()->getModuleDirByNS($module) . '/' . NGS()->get('PUBLIC_DIR'));
-        $filePath = realpath($modulePublicDir . '/' . $file);
-        if ($filePath === false) {
+        $realFilePath = realpath($filePath);
+        if ($realFilePath === false) {
             throw new DebugException('File Not Found');
         }
         $options = [];
@@ -49,7 +48,7 @@ class FileUtils
             $options['cache'] = false;
         }
         try {
-            $this->sendFile($filePath, $options);
+            $this->sendFile($realFilePath, $options);
         } catch (DebugException $e) {
         }
     }
