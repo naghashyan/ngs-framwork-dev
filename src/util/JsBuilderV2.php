@@ -27,6 +27,7 @@ namespace ngs\util;
 use ngs\exceptions\DebugException;
 use ngs\NgsModule;
 
+
 class JsBuilderV2 extends AbstractBuilder
 {
     /**
@@ -35,7 +36,7 @@ class JsBuilderV2 extends AbstractBuilder
      */
     public function streamFile(string $filePath): void
     {
-        if ($this->getEnvironment() === 'development') {
+        if ($this->getEnvironment() === NgsEnvironmentContext::ENVIRONMENT_DEVELOPMENT) {
             $this->streamDevFile($filePath);
             return;
         }
@@ -44,7 +45,7 @@ class JsBuilderV2 extends AbstractBuilder
 
     public function streamDevFile(string $filePath): void
     {
-        $fileUtils = NGS()->createDefinedInstance('FILE_UTILS', \ngs\util\FileUtils::class);
+        $fileUtils = NGS()->createDefinedInstance("FILE_UTILS", \ngs\util\FileUtils::class);
         $file = basename($filePath);
         $jsFile = substr($file, stripos($file, NGS()->get('JS_DIR')) + strlen(NGS()->get('JS_DIR')) + 1);
 
@@ -93,7 +94,7 @@ class JsBuilderV2 extends AbstractBuilder
             if ($value['module'] !== null) {
                 $module = $value['module'];
             }
-            $requestContext = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class);
+            $requestContext = NGS()->createDefinedInstance("REQUEST_CONTEXT", \ngs\util\RequestContext::class);
             $inputFile = $requestContext->getHttpHostByNs($module) . '/js/' . trim(str_replace('\\', '/', $value['file']));
         }
     }

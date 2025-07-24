@@ -22,6 +22,20 @@ namespace ngs\util;
 class NgsEnvironmentContext
 {
     /**
+     * Environment name constants
+     */
+    public const ENVIRONMENT_DEVELOPMENT = 'development';
+    public const ENVIRONMENT_STAGING = 'staging';
+    public const ENVIRONMENT_PRODUCTION = 'production';
+    
+    /**
+     * Short environment name constants
+     */
+    public const SHORT_ENVIRONMENT_DEV = 'dev';
+    public const SHORT_ENVIRONMENT_STAGE = 'stage';
+    public const SHORT_ENVIRONMENT_PROD = 'prod';
+
+    /**
      * @var NgsEnvironmentContext|null Singleton instance
      */
     private static ?NgsEnvironmentContext $instance = null;
@@ -57,13 +71,13 @@ class NgsEnvironmentContext
      */
     private function initializeEnvironment(): void
     {
-        $environment = 'production'; // Default environment
+        $environment = self::ENVIRONMENT_PRODUCTION; // Default environment
         
         if (isset($_SERVER['ENVIRONMENT'])) {
-            if ($_SERVER['ENVIRONMENT'] == 'development' || $_SERVER['ENVIRONMENT'] == 'dev') {
-                $environment = 'development';
-            } elseif ($_SERVER['ENVIRONMENT'] == 'staging') {
-                $environment = 'staging';
+            if ($_SERVER['ENVIRONMENT'] == self::ENVIRONMENT_DEVELOPMENT || $_SERVER['ENVIRONMENT'] == self::SHORT_ENVIRONMENT_DEV) {
+                $environment = self::ENVIRONMENT_DEVELOPMENT;
+            } elseif ($_SERVER['ENVIRONMENT'] == self::ENVIRONMENT_STAGING) {
+                $environment = self::ENVIRONMENT_STAGING;
             }
         }
         
@@ -87,11 +101,11 @@ class NgsEnvironmentContext
      */
     public function getShortEnvironment(): string
     {
-        $env = 'prod';
-        if ($this->environment === 'development') {
-            $env = 'dev';
-        } elseif ($this->environment === 'staging') {
-            $env = 'stage';
+        $env = self::SHORT_ENVIRONMENT_PROD;
+        if ($this->environment === self::ENVIRONMENT_DEVELOPMENT) {
+            $env = self::SHORT_ENVIRONMENT_DEV;
+        } elseif ($this->environment === self::ENVIRONMENT_STAGING) {
+            $env = self::SHORT_ENVIRONMENT_STAGE;
         }
         return $env;
     }
@@ -103,7 +117,7 @@ class NgsEnvironmentContext
      */
     public function isDevelopment(): bool
     {
-        return $this->environment === 'development';
+        return $this->environment === self::ENVIRONMENT_DEVELOPMENT;
     }
 
     /**
@@ -113,7 +127,7 @@ class NgsEnvironmentContext
      */
     public function isStaging(): bool
     {
-        return $this->environment === 'staging';
+        return $this->environment === self::ENVIRONMENT_STAGING;
     }
 
     /**
@@ -123,7 +137,7 @@ class NgsEnvironmentContext
      */
     public function isProduction(): bool
     {
-        return $this->environment === 'production';
+        return $this->environment === self::ENVIRONMENT_PRODUCTION;
     }
 
     /**

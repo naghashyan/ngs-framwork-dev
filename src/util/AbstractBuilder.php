@@ -43,7 +43,7 @@ abstract class AbstractBuilder
         $file = basename($filePath);
         $publicDir = NGS()->get('PUBLIC_DIR');
 
-        if ($this->getEnvironment() === 'production') {
+        if ($this->getEnvironment() === NgsEnvironmentContext::ENVIRONMENT_PRODUCTION) {
             $realFilePath = realpath($filePath);
             if (strpos($file, NGS()->getDefinedValue('PUBLIC_OUTPUT_DIR')) === false) {
                 if (!$realFilePath) {
@@ -55,7 +55,7 @@ abstract class AbstractBuilder
             $fileUtils->sendFile($realFilePath, ['mimeType' => $this->getContentType(), 'cache' => true]);
             return;
         }
-
+	
         if (strpos($file, 'devout') !== false) {
             $realFile = substr($file, strpos($file, '/') + 1);
             $realFilePath = realpath(dirname($filePath) . '/' . $realFile);
@@ -231,6 +231,7 @@ abstract class AbstractBuilder
         foreach ($files['files'] as $value) {
             $module = '';
             if ($value['module'] == null) {
+	    //TODO: ZN: refactor
                 $module = 'ngs';
             }
             $inputFile = realpath($this->getItemDir($module) . '/' . trim($value['file']));
