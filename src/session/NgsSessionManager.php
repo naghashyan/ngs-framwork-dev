@@ -23,6 +23,7 @@ namespace ngs\session;
 use ngs\dal\dto\AbstractDto;
 use ngs\request\AbstractAction;
 
+//TODO: ZN: revise each function and check correspondence with the absract session manager
 class NgsSessionManager extends \ngs\session\AbstractSessionManager
 {
     private $requestSessionHeadersArr = [];

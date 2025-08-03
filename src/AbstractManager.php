@@ -28,8 +28,10 @@ abstract class AbstractManager
     {
     }
 
+    //TODO: ZN: for what are these
     protected $orderFields = [];
 
+    //TODO: ZN: for what are these
     /**
      * @param $dataObject
      * @param $paramsArray
@@ -47,6 +49,7 @@ abstract class AbstractManager
         return true;
     }
 
+    //TODO: ZN: for what are these
     public function validateOrderFileld($key)
     {
         if ($this->orderFields[$key]) {
@@ -55,6 +58,7 @@ abstract class AbstractManager
         return false;
     }
 
+    //TODO: ZN: for what are these
     /**
      * Simple hashcode generator
      *

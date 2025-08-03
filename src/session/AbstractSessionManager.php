@@ -38,6 +38,7 @@ abstract class AbstractSessionManager
     abstract public function getUser();
 
     /**
+     * TODO: ZN: revise, why we get here user as a string
      * Abstract method for set user,
      * Children of the AbstractSessionManager class should override this method
      *

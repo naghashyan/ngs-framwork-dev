@@ -83,6 +83,7 @@ class NgsRouteConfig
     private ?string $package = null;
 
     /**
+     * TODO: ZN: check do we need this?
      * Create NgsRouteConfig from array
      *
      * @param array $config Route configuration array
@@ -114,6 +115,7 @@ class NgsRouteConfig
      */
     public function toArray(): array
     {
+        //TODO: ZN: check do we need this?
         $result = [];
 
         if ($this->action !== null) {
@@ -156,6 +158,7 @@ class NgsRouteConfig
     // Getters and Setters
 
     /**
+     * TODO: ZN: rename to Request
      * @return string|null
      */
     public function getAction(): ?string
@@ -175,6 +178,7 @@ class NgsRouteConfig
     }
 
     /**
+     * TODO: ZN: revise
      * Calculate and cache derived values from action
      *
      * @return void
@@ -220,6 +224,7 @@ class NgsRouteConfig
     }
 
     /**
+     * TODO: ZN: what is the route? is it URL?
      * @return string|null
      */
     public function getRoute(): ?string
@@ -238,6 +243,8 @@ class NgsRouteConfig
     }
 
     /**
+     * TODO: ZN: what are the constraints
+     *
      * @return array
      */
     public function getConstraints(): array
@@ -274,6 +281,7 @@ class NgsRouteConfig
     }
 
     /**
+     * TODO: ZN: what are the args
      * @return array
      */
     public function getArgs(): array
@@ -292,6 +300,7 @@ class NgsRouteConfig
     }
 
     /**
+     * TODO: ZN: what is the type?
      * @return string|null
      */
     public function getType(): ?string

@@ -94,7 +94,7 @@ class NgsModule
 
             // Apply override constants
             $this->processConstants($overrideConstants, $environmentContext, $configReplacements, $this->constants);
-
+//TODO: ZN: revise this part
             // Set default constants if not set
             if (!isset($this->constants['NAME'])) {
                 $this->constants['NAME'] = 'default';
@@ -193,6 +193,7 @@ class NgsModule
         if (empty($this->moduleDir)) {
             // If moduleDir is not set, use a hardcoded default config directory
             // to avoid circular dependency with NGS()
+            //TODO: ZN: here we have an issue, revise
             $rootDir = defined('NGS_ROOT') ? NGS_ROOT : getcwd();
             return $rootDir . '/conf';
         }
@@ -336,6 +337,7 @@ class NgsModule
     }
 
     /**
+     * TODO: ZN: revise the naming and context
      * Extracts the module name from a namespace.
      *
      * @param string $namespace The namespace to extract from

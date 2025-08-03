@@ -37,7 +37,7 @@ abstract class AbstractAction extends \ngs\request\AbstractRequest
     }
 
     /**
-     * this function invoked when user hasn't permistion
+     * this function invoked when user hasn't permission
      *
      * @abstract
      * @access

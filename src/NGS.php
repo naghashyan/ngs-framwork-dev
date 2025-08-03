@@ -285,6 +285,7 @@ namespace ngs {
         }
 
         /**
+         * TODO: ZN: recheck
          * Gets the module directory by namespace.
          * @deprecated
          * @param string $name The namespace
@@ -298,6 +299,7 @@ namespace ngs {
         }
 
         /**
+         *  TODO: ZN: recheck
          * Loads event subscribers from configuration.
          */
         protected function loadEvents(): void
@@ -319,6 +321,7 @@ namespace ngs {
         }
 
         /**
+         *  TODO: ZN: recheck
          * Subscribes to each subscriber's events.
          *
          * @param array $subscribers Array of subscriber class names
@@ -386,7 +389,7 @@ namespace {
         return \ngs\NGS::getInstance();
     }
 
-    if (getenv('SKIP_NGS_INIT') !== 'true') {
+    if (getenv('SKIP_NGS_INIT') !== 'true') {//TODO: ZN: for what is this?
         require_once('system/NgsDefaultConstants.php');
     }
 }

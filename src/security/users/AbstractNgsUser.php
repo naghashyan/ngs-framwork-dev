@@ -22,6 +22,7 @@
 
 namespace ngs\security\users;
 
+//TODO: ZN: check how is this used in the current projects
 abstract class AbstractNgsUser
 {
     /**

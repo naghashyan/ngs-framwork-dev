@@ -178,7 +178,7 @@ abstract class AbstractRequest
     /**
      * set http2 push params
      * it will add in response header
-     * suppored types img, script and link
+     * supported types img, script and link
      *
      * @param string $type
      * @param string $value
