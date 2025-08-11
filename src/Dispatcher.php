@@ -34,6 +34,8 @@ use ngs\routes\NgsRoutesResolver;
 use ngs\routes\NgsFileRoute;
 use ngs\util\NgsArgs;
 use ngs\util\NgsEnvironmentContext;
+use ngs\util\RequestContext;
+use ngs\request\AbstractRequest;
 
 /**
  * Class Dispatcher
@@ -84,7 +86,7 @@ class Dispatcher
         try {
             /** @var NgsRoutesResolver $routesEngine */
             $routesEngine = NGS()->createDefinedInstance('ROUTES_ENGINE', \ngs\routes\NgsRoutesResolver::class);
-            $requestContext = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class);
+            $requestContext = NGS()->createDefinedInstance('REQUEST_CONTEXT', RequestContext::class);
             $templateEngine = NGS()->createDefinedInstance('TEMPLATE_ENGINE', \ngs\templater\NgsTemplater::class);
 
             if ($route === null) {
@@ -204,7 +206,7 @@ class Dispatcher
     public function loadPage(string $action): void
     {
         try {
-            $loadObj = $this->instantiateLoad($action);
+            $loadObj = $this->instantiateRequestObject($action);
             $loadObj->initialize();
 
             if (!$this->validateRequest($loadObj)) {
@@ -233,7 +235,7 @@ class Dispatcher
             $this->finishRequest();
             $loadObj->afterRequest();
         } catch (NoAccessException $ex) {
-            $this->onNoAccessIfPossible($loadObj ?? null);
+            $this->onNoAccess($loadObj);
             throw $ex;
         } catch (InvalidUserException $ex) {
             $this->handleInvalidUserAndNoAccessException($ex);
@@ -254,7 +256,7 @@ class Dispatcher
     {
         try {
             /** @var NgsApiAction $loadObj */
-            $loadObj = $this->instantiateLoad($route->getAction());
+            $loadObj = $this->instantiateRequestObject($route->getAction());
             $loadObj->setAction($route->offsetGet('action_method'));
             $loadObj->setRequestValidators($route->offsetGet('request_params'));
             $loadObj->setResponseValidators($route->offsetGet('response_params'));
@@ -289,10 +291,10 @@ class Dispatcher
                 $loadObj->afterRequest();
             }
         } catch (NoAccessException $ex) {
-            $this->onNoAccessIfPossible($loadObj ?? null);
+            $this->onNoAccess($loadObj);
             throw $ex;
         } catch (InvalidUserException $ex) {
-            $this->onNoAccessIfPossible($loadObj ?? null);
+            $this->onNoAccess($loadObj);
             throw $ex;
         }
     }
@@ -310,7 +312,7 @@ class Dispatcher
     public function validate(string $action): void
     {
         try {
-            $loadObj = $this->instantiateLoad($action);
+            $loadObj = $this->instantiateRequestObject($action);
             $loadObj->initialize();
 
             if (!$this->validateRequest($loadObj)) {
@@ -333,10 +335,10 @@ class Dispatcher
 
             $loadObj->afterRequest();
         } catch (NoAccessException $ex) {
-            $this->onNoAccessIfPossible($loadObj ?? null);
+            $this->onNoAccess($loadObj);
             throw $ex;
         } catch (InvalidUserException $ex) {
-            $this->onNoAccessIfPossible($loadObj ?? null);
+            $this->onNoAccess($loadObj);
             throw $ex;
         }
     }
@@ -354,7 +356,7 @@ class Dispatcher
     private function doAction(string $action): void
     {
         try {
-            $actionObj = $this->instantiateAction($action);
+            $actionObj = $this->instantiateRequestObject($action);
             $actionObj->initialize();
 
             if (!$this->validateRequest($actionObj)) {
@@ -373,7 +375,7 @@ class Dispatcher
 
             $actionObj->afterRequest();
         } catch (NoAccessException $ex) {
-            $this->onNoAccessIfPossible($actionObj ?? null);
+            $this->onNoAccess($actionObj);
             throw $ex;
         } catch (InvalidUserException $ex) {
             $this->handleInvalidUserAndNoAccessException($ex);
@@ -393,7 +395,7 @@ class Dispatcher
     private function doApiAction(NgsRoute $route): void
     {
         try {
-            $actionObj = $this->instantiateAction($route->getAction());
+            $actionObj = $this->instantiateRequestObject($route->getAction());
             $actionObj->setAction($route->offsetGet('action_method'));
             $actionObj->setRequestValidators($route->offsetGet('request_params'));
             $actionObj->setResponseValidators($route->offsetGet('response_params'));
@@ -415,10 +417,10 @@ class Dispatcher
 
             $actionObj->afterRequest();
         } catch (NoAccessException $ex) {
-            $this->onNoAccessIfPossible($actionObj ?? null);
+            $this->onNoAccess($actionObj);
             throw $ex;
         } catch (InvalidUserException $ex) {
-            $this->onNoAccessIfPossible($actionObj ?? null);
+            $this->onNoAccess($actionObj);
             throw $ex;
         }
     }
@@ -465,7 +467,7 @@ class Dispatcher
      */
     private function handleInvalidUserAndNoAccessException($ex): void
     {
-        $requestContext = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class);
+        $requestContext = NGS()->createDefinedInstance('REQUEST_CONTEXT', RequestContext::class);
         $templateEngine = NGS()->createDefinedInstance('TEMPLATE_ENGINE', \ngs\templater\NgsTemplater::class);
 
         // For non-AJAX requests, redirect to the specified URL
@@ -497,7 +499,7 @@ class Dispatcher
      *
      * @return bool True if the request is valid, false otherwise
      */
-    private function validateRequest(object $request): bool
+    private function validateRequest(AbstractRequest $request): bool
     {
         $sessionManager = NGS()->createDefinedInstance('SESSION_MANAGER', \ngs\session\AbstractSessionManager::class);
         return $sessionManager->validateRequest($request);
@@ -531,10 +533,10 @@ class Dispatcher
      * Helper: redirects to a not found route or echoes 404 and exits
      *
      * @param NgsRoutesResolver $routesEngine
-     * @param \ngs\util\RequestContext $requestContext
+     * @param RequestContext $requestContext
      * @return void
      */
-    private function redirectToNotFound(NgsRoutesResolver $routesEngine, \ngs\util\RequestContext $requestContext): void
+    private function redirectToNotFound(NgsRoutesResolver $routesEngine, RequestContext $requestContext): void
     {
         $moduleResolver = \ngs\routes\NgsModuleResolver::getInstance();
         $module = $moduleResolver->resolveModule($requestContext->getRequestUri());
@@ -558,48 +560,32 @@ class Dispatcher
     }
 
     /**
-     * Helper: instantiate a Load class or throw DebugException
+     * Helper: instantiate a Request (Load/Action) class or throw DebugException
      *
-     * @param string $action
-     * @return object
+     * @param string $request Fully-qualified or hyphenated class path
+     * @param string|null $kind Optional kind label for message context (e.g., 'Load' or 'Action')
+     * @return AbstractRequest
      * @throws DebugException
      */
-    private function instantiateLoad(string $action): object
+    private function instantiateRequestObject(string $request): AbstractRequest
     {
-        $class = $this->normalizeClassName($action);
+        $class = $this->normalizeClassName($request);
         if (class_exists($class) === false) {
-            throw new DebugException($class . ' Load Not found');
+            throw new DebugException($class .  ' Not found');
         }
         return new $class();
     }
 
-    /**
-     * Helper: instantiate an Action class or throw DebugException
-     *
-     * @param string $action
-     * @return object
-     * @throws DebugException
-     */
-    private function instantiateAction(string $action): object
-    {
-        $class = $this->normalizeClassName($action);
-        if (class_exists($class) === false) {
-            throw new DebugException($class . ' Action Not found');
-        }
-        return new $class();
-    }
 
     /**
-     * Helper: call onNoAccess on object if method exists
+     * Helper: call onNoAccess on the given request
      *
-     * @param mixed $obj
+     * @param AbstractRequest $obj
      * @return void
      */
-    private function onNoAccessIfPossible($obj): void
+    private function onNoAccess(AbstractRequest $obj): void
     {
-        if (is_object($obj) && method_exists($obj, 'onNoAccess')) {
-            $obj->onNoAccess();
-        }
+        $obj->onNoAccess();
     }
 
     /**
