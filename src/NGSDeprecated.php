@@ -382,10 +382,14 @@ abstract class NGSDeprecated extends NgsModule
     public function getPublicHostByNS(string $ns = '', bool $withProtocol = false)
     {
         if ($ns === '') {
-            if ($this->getModulesRoutesEngine()->isDefaultModule()) {
+            $resolver = $this->getModulesRoutesEngine();
+            $requestContext = $this->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class);
+            $currentModule = $resolver->resolveModule($requestContext->getRequestUri()) ?? $this;
+            $currentModuleName = $currentModule->getName();
+            if ($currentModuleName === $this->getName()) {
                 return $this->getHttpUtils()->getHttpHost(true, $withProtocol);
             }
-            $ns = $this->getModulesRoutesEngine()->getModuleName();
+            $ns = $currentModuleName;
         }
         return $this->getHttpUtils()->getHttpHost(true, $withProtocol) . '/' . $ns;
     }

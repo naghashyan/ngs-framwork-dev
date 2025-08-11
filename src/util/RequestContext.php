@@ -105,7 +105,7 @@ class RequestContext
             if ($ns == "") {
                 return $httpHost;
             }
-            if ($moduleRoutesEngine->isDefaultModule()) {
+            if ($moduleRoutesEngine->getModuleName() === '' || $moduleRoutesEngine->getModuleName() === NGS()->getName()) { // TODO: previously was isDefaultModule(); code path currently unreachable
             }
 
             return $httpHost . "/" . $moduleRoutesEngine->getModuleUri();
@@ -127,16 +127,15 @@ class RequestContext
     {
         $moduleRoutesEngine = NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', \ngs\routes\NgsModuleResolver::class);
         $httpHost = $this->getHttpHost(true, $withProtocol);
-        if ($moduleRoutesEngine->getModuleType() === "path") {
-            if ($ns == "" || $moduleRoutesEngine->isCurrentModule($ns)) {
-                return $httpHost . "/" . $moduleRoutesEngine->getModuleUri();
-            }
-        }
-        if ($ns == "") {
-            if ($moduleRoutesEngine->isDefaultModule()) {
+        // Resolve current module name dynamically from the request URI
+        $currentModule = $moduleRoutesEngine->resolveModule($this->getRequestUri()) ?? NGS();
+        $currentModuleName = $currentModule->getName();
+        if ($ns === "") {
+            // If no namespace requested, return host for default module; otherwise append current module name
+            if ($currentModuleName === NGS()->getName()) {
                 return $httpHost;
             }
-            $ns = $moduleRoutesEngine->getModuleName();
+            $ns = $currentModuleName;
         }
         return $this->getHttpHost(true, $withProtocol) . "/" . $ns;
     }

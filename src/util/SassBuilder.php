@@ -78,10 +78,11 @@ namespace ngs\util {
 
             $moduleRoutesEngineForParser = NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', \ngs\routes\NgsModuleResolver::class);
             $ngsModulePathForParser = '';
-            if ($moduleRoutesEngineForParser->isDefaultModule()) {
+            $currentModuleForParser = $moduleRoutesEngineForParser->resolveModule($requestContext->getRequestUri()) ?? NGS();
+            $currentModuleNsForParser = $currentModuleForParser->getName();
+            if ($currentModuleNsForParser === NGS()->getName()) {
                 $ngsModulePathForParser = $requestContext->getHttpHost(true, false);
             } else {
-                $currentModuleNsForParser = $moduleRoutesEngineForParser->getModuleName();
                 $ngsModulePathForParser = $requestContext->getHttpHost(true, false) . '/' . $currentModuleNsForParser;
             }
             $this->sassParser->setVariables([

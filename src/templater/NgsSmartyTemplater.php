@@ -58,10 +58,11 @@ class NgsSmartyTemplater extends Smarty
         $this->registerPlugin('modifier', 'json_encode', [$this, "jsonEncode"]);
         $this->registerPlugin('modifier', 'print_r', [$this, "printR"]);
 
-        $moduleDirs = $moduleRoutesEngine->getAllModulesDirs();
+        $modules = $moduleRoutesEngine->getAllModules();
         $tmpTplArr = [];
 
-        foreach ($moduleDirs as $moduleDir) {
+        foreach ($modules as $module) {
+            $moduleDir = $module->getDir();
             $tmpTplArr[$moduleDir] = realpath($moduleDir . '/' . NGS()->get('TEMPLATES_DIR'));
         }
 
@@ -374,16 +375,20 @@ class NgsSmartyTemplater extends Smarty
         //TODO: ZN: this logic should be refactored, what is the content load, I guess it should be added to the load object
         //$jsString .= "NGS.setInitialLoad('" . NGS()->getRoutesEngine()->getContentLoad() . "', '" . json_encode($this->params) . "');";
         $jsModule = '';
-        if (!NGS()->getModulesRoutesEngine()->isDefaultModule()) {
-            $jsModule = NGS()->getModulesRoutesEngine()->getModuleName() . '/';
+        $requestContext = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class);
+        $resolver = NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', \ngs\routes\NgsModuleResolver::class);
+        $currentModule = $resolver->resolveModule($requestContext->getRequestUri()) ?? NGS();
+        $currentModuleName = $currentModule->getName();
+        if ($currentModuleName !== NGS()->getName()) {
+            $jsModule = $currentModuleName . '/';
         }
 
         $jsString .= 'NGS.setJsPublicDir("' . $jsModule . NGS()->getPublicJsOutputDir() . '");';
-        $jsString .= 'NGS.setModule("' . NGS()->getModulesRoutesEngine()->getModuleName() . '");';
+        $jsString .= 'NGS.setModule("' . $currentModuleName . '");';
         $jsString .= 'NGS.setTmst("' . time() . '");';
         $jsString .= 'NGS.setHttpHost("' . NGS()->getHttpUtils()->getHttpHostByNs("", true) . '");';
-        if (!NGS()->getModulesRoutesEngine()->isDefaultModule()) {
-            $jsString .= 'NGS.setModuleHttpHost("' . NGS()->getHttpUtils()->getHttpHostByNs(NGS()->getModulesRoutesEngine()->getModuleName(), true) . '");';
+        if ($currentModuleName !== NGS()->getName()) {
+            $jsString .= 'NGS.setModuleHttpHost("' . NGS()->getHttpUtils()->getHttpHostByNs($currentModuleName, true) . '");';
         }
         $staticPath = NGS()->getHttpUtils()->getHttpHost(true);
         if (isset(NGS()->getConfig()->static_path)) {

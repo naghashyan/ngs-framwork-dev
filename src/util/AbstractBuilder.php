@@ -141,11 +141,13 @@ abstract class AbstractBuilder
                         }
                     }
                 } else {
-                    $module = $moduleRoutesEngine->getModuleName();
+                    $requestContext = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class);
+                    $resolvedModule = $moduleRoutesEngine->resolveModule($requestContext->getRequestUri()) ?? NGS();
+                    $module = $resolvedModule->getName();
                     if (isset($value->module)) {
                         $module = $value->module;
                     }
-                    if ($module == $moduleRoutesEngine->getDefaultNS()) {
+                    if ($module == NGS()->getName()) {
                         $module = null;
                     }
                     $type = null;

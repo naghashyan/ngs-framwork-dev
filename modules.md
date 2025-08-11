@@ -8,6 +8,16 @@ NGS Framework supports modularization, enabling modules to function as independe
 * **Subdomain:** Specific subdomains.
 * **URL Path:** Paths such as `domain/admin` redirecting requests to the respective module.
 
+## Resolution Priority
+
+When resolving which module should handle a request, the resolver applies the following priority order:
+
+1. Domain mapping (default.domain.map) — highest priority.
+2. Subdomain mapping (default.subdomain).
+3. URL Path mapping (default.path) — lowest priority.
+
+This ensures that dedicated domains always take precedence over subdomain or path-based routing.
+
 ## Modules Configuration
 
 Modules are centrally configured via:

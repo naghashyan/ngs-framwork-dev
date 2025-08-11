@@ -64,10 +64,11 @@ class CssBuilder extends AbstractBuilder
 
         $moduleRoutesEngineInst = NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', \ngs\routes\NgsModuleResolver::class);
         $ngsModulePath = '';
-        if ($moduleRoutesEngineInst->isDefaultModule()) {
+        $currentModule = $moduleRoutesEngineInst->resolveModule($requestContext->getRequestUri()) ?? NGS();
+        $currentModuleNs = $currentModule->getName();
+        if ($currentModuleNs === NGS()->getName()) {
             $ngsModulePath = $requestContext->getHttpHost(true, false);
         } else {
-            $currentModuleNs = $moduleRoutesEngineInst->getModuleName();
             $ngsModulePath = $requestContext->getHttpHost(true, false) . '/' . $currentModuleNs;
         }
 

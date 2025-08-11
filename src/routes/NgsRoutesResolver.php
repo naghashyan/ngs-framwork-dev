@@ -310,14 +310,9 @@ class NgsRoutesResolver
     private function determinePackageAndFileUrl(array $urlMatches, string $fileUrl): array
     {
         $filePieces = $urlMatches;
-        $moduleRoutesEngine = NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', \ngs\routes\NgsModuleResolver::class);
-
-        if ($moduleRoutesEngine->checkModuleByName($filePieces[0])) {
-            $package = array_shift($filePieces);
-            $fileUrl = implode('/', $filePieces);
-        } else {
-            $package = array_shift($filePieces);
-        }
+        // In new resolver design, we don't check modules here. Just shift first segment as package.
+        $package = array_shift($filePieces);
+        $fileUrl = implode('/', $filePieces);
 
         return [$package, $fileUrl, $filePieces];
     }
@@ -333,11 +328,13 @@ class NgsRoutesResolver
      */
     private function validatePackage(string $package): string
     {
-        $moduleRoutesEngine = NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', \ngs\routes\NgsModuleResolver::class);
-
-        if (!$moduleRoutesEngine->checkModuleByName($package) ||
-            $moduleRoutesEngine->getModuleType() === 'path') {
-            return $moduleRoutesEngine->getModuleName();
+        // Without a persistent current module API, fall back to the resolved module name
+        // when package validation cannot be performed here.
+        if ($package === null || $package === '') {
+            $resolver = NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', \ngs\routes\NgsModuleResolver::class);
+            $requestContext = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class);
+            $currentModule = $resolver->resolveModule($requestContext->getRequestUri()) ?? NGS();
+            return $currentModule->getName();
         }
 
         return $package;

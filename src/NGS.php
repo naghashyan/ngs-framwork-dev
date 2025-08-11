@@ -153,14 +153,15 @@ namespace ngs {
          */
         public function getModule(string $moduleName, string $type = self::MODULE_TYPE_DOMAIN): NgsModule
         {
+            $cacheKey = $moduleName . '|' . $type;
             // Check if module is already loaded
-            if (isset($this->loadedModules[$moduleName])) {
-                return $this->loadedModules[$moduleName];
+            if (isset($this->loadedModules[$cacheKey])) {
+                return $this->loadedModules[$cacheKey];
             }
 
             // Load the module and cache the instance
             $module = $this->loadModule($moduleName, $type);
-            $this->loadedModules[$moduleName] = $module;
+            $this->loadedModules[$cacheKey] = $module;
 
             return $module;
         }

@@ -29,6 +29,7 @@ use ngs\exceptions\NgsErrorException;
 use ngs\exceptions\NoAccessException;
 use ngs\exceptions\NotFoundException;
 use ngs\exceptions\RedirectException;
+use ngs\routes\NgsRoute;
 use ngs\routes\NgsRoutesResolver;
 use ngs\routes\NgsFileRoute;
 use ngs\util\NgsArgs;
@@ -70,13 +71,13 @@ class Dispatcher
     /**
      * Manages matched routes and dispatches requests to appropriate handlers
      *
-     * @param \ngs\routes\NgsRoute|null $route Route object from the router, used for redirecting the requests
+     * @param NgsRoute|null $route Route object from the router, used for redirecting the requests
      *
      * @return void
      * @throws DebugException When a debug error occurs
      * @throws \JsonException When JSON processing fails
      */
-    public function dispatch(?\ngs\routes\NgsRoute $route = null): void
+    public function dispatch(?NgsRoute $route = null): void
     {
         $subscribers = $this->eventManager->loadSubscribers();
         $this->eventManager->subscribeToEvents($subscribers);
@@ -272,14 +273,14 @@ class Dispatcher
     /**
      * Handles API load requests
      *
-     * @param \ngs\routes\NgsRoute $route The routes object containing action and parameters
+     * @param NgsRoute $route The routes object containing action and parameters
      * 
      * @return void
      * @throws DebugException When the load class is not found
      * @throws InvalidUserException When user is invalid
      * @throws NoAccessException When access is denied
      */
-    public function loadApiPage(\ngs\routes\NgsRoute $route): void
+    public function loadApiPage(NgsRoute $route): void
     {
         try {
             $action = $route->getAction();
@@ -440,14 +441,14 @@ class Dispatcher
     /**
      * Handles API action requests
      *
-     * @param \ngs\routes\NgsRoute $route The routes object containing action and parameters
+     * @param NgsRoute $route The routes object containing action and parameters
      * 
      * @return void
      * @throws DebugException When the action class is not found
      * @throws InvalidUserException When user is invalid
      * @throws NoAccessException When access is denied
      */
-    private function doApiAction(\ngs\routes\NgsRoute $route): void
+    private function doApiAction(NgsRoute $route): void
     {
         try {
             $action = $route->getAction();
