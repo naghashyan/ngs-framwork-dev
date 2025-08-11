@@ -42,6 +42,10 @@ class NgsRoute
      */
     private $module = null;
 
+    /**
+     * @var array Nested load configurations to be dispatched with the main request
+     */
+    private array $nestedLoad = [];
 
     /**
      * @var string|null Per-group 404 request identifier (for rendering the correct not found page)
@@ -173,5 +177,21 @@ class NgsRoute
     public function setNotFoundRequest(?string $notFoundRequest): void
     {
         $this->notFoundRequest = $notFoundRequest;
+    }
+
+    /**
+     * Get nestedLoad configuration.
+     */
+    public function getNestedLoad(): array
+    {
+        return $this->nestedLoad;
+    }
+
+    /**
+     * Set nestedLoad configuration.
+     */
+    public function setNestedLoad(array $nestedLoad): void
+    {
+        $this->nestedLoad = $nestedLoad;
     }
 }

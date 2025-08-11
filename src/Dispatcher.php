@@ -87,7 +87,6 @@ class Dispatcher
             $requestContext = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class);
             $templateEngine = NGS()->createDefinedInstance('TEMPLATE_ENGINE', \ngs\templater\NgsTemplater::class);
 
-            //TODO: ZN: implement the routesArray as a class
             if ($route === null) {
                 $requestUri = $requestContext->getRequestUri();
 
@@ -151,18 +150,8 @@ class Dispatcher
                 return;
             }
 
-            // Get the module instance if available
-            $moduleResolver = \ngs\routes\NgsModuleResolver::getInstance();
-            $module = $moduleResolver->resolveModule($requestContext->getRequestUri());
-
-            $route = $routesEngine->getNotFoundLoad($module);
-            if ($route === null || $this->isRedirect === true) {
-                echo '404';
-                exit;
-            }
-
-            $this->isRedirect = true;
-            $this->dispatch($route);
+            // Handle 404 via helper
+            $this->redirectToNotFound($routesEngine, $requestContext);
         } catch (RedirectException $ex) {
             $requestContext->redirect($ex->getRedirectTo());
         } catch (NotFoundException $ex) {
@@ -172,18 +161,8 @@ class Dispatcher
                     return;
                 }
 
-                // Get the module instance if available
-                $moduleResolver = \ngs\routes\NgsModuleResolver::getInstance();
-                $module = $moduleResolver->resolveModule($requestContext->getRequestUri());
-
-                $route = $routesEngine->getNotFoundLoad($module);
-                if ($route === null || $this->isRedirect === true) {
-                    echo '404';
-                    exit;
-                }
-
-                $this->isRedirect = true;
-                $this->dispatch($route);
+                // Handle 404 via helper
+                $this->redirectToNotFound($routesEngine, $requestContext);
             } catch (\Throwable $exp) {
                 header($_SERVER["SERVER_PROTOCOL"] . " 404 Not Found", true, 404);
                 exit;
@@ -225,14 +204,7 @@ class Dispatcher
     public function loadPage(string $action): void
     {
         try {
-            // Convert hyphenated namespace to proper namespace format
-            $action = str_replace('-', '\\', $action);
-
-            if (class_exists($action) === false) {
-                throw new DebugException($action . ' Load Not found');
-            }
-
-            $loadObj = new $action();
+            $loadObj = $this->instantiateLoad($action);
             $loadObj->initialize();
 
             if (!$this->validateRequest($loadObj)) {
@@ -261,9 +233,7 @@ class Dispatcher
             $this->finishRequest();
             $loadObj->afterRequest();
         } catch (NoAccessException $ex) {
-            if (isset($loadObj) && is_object($loadObj)) {
-                $loadObj->onNoAccess();
-            }
+            $this->onNoAccessIfPossible($loadObj ?? null);
             throw $ex;
         } catch (InvalidUserException $ex) {
             $this->handleInvalidUserAndNoAccessException($ex);
@@ -283,15 +253,8 @@ class Dispatcher
     public function loadApiPage(NgsRoute $route): void
     {
         try {
-            $action = $route->getAction();
-            $action = str_replace('-', '\\', $action);
-
-            if (class_exists($action) === false) {
-                throw new DebugException($action . ' Load Not found');
-            }
-
             /** @var NgsApiAction $loadObj */
-            $loadObj = new $action();
+            $loadObj = $this->instantiateLoad($route->getAction());
             $loadObj->setAction($route->offsetGet('action_method'));
             $loadObj->setRequestValidators($route->offsetGet('request_params'));
             $loadObj->setResponseValidators($route->offsetGet('response_params'));
@@ -326,14 +289,10 @@ class Dispatcher
                 $loadObj->afterRequest();
             }
         } catch (NoAccessException $ex) {
-            if (isset($loadObj) && is_object($loadObj)) {
-                $loadObj->onNoAccess();
-            }
+            $this->onNoAccessIfPossible($loadObj ?? null);
             throw $ex;
         } catch (InvalidUserException $ex) {
-            if (isset($loadObj) && is_object($loadObj)) {
-                $loadObj->onNoAccess();
-            }
+            $this->onNoAccessIfPossible($loadObj ?? null);
             throw $ex;
         }
     }
@@ -351,11 +310,7 @@ class Dispatcher
     public function validate(string $action): void
     {
         try {
-            if (class_exists($action) === false) {
-                throw new DebugException($action . ' Load Not found');
-            }
-
-            $loadObj = new $action();
+            $loadObj = $this->instantiateLoad($action);
             $loadObj->initialize();
 
             if (!$this->validateRequest($loadObj)) {
@@ -378,14 +333,10 @@ class Dispatcher
 
             $loadObj->afterRequest();
         } catch (NoAccessException $ex) {
-            if (isset($loadObj) && is_object($loadObj)) {
-                $loadObj->onNoAccess();
-            }
+            $this->onNoAccessIfPossible($loadObj ?? null);
             throw $ex;
         } catch (InvalidUserException $ex) {
-            if (isset($loadObj) && is_object($loadObj)) {
-                $loadObj->onNoAccess();
-            }
+            $this->onNoAccessIfPossible($loadObj ?? null);
             throw $ex;
         }
     }
@@ -403,14 +354,7 @@ class Dispatcher
     private function doAction(string $action): void
     {
         try {
-            // Convert hyphenated namespace to proper namespace format
-            $action = str_replace('-', '\\', $action);
-
-            if (class_exists($action) === false) {
-                throw new DebugException($action . ' Action Not found');
-            }
-
-            $actionObj = new $action();
+            $actionObj = $this->instantiateAction($action);
             $actionObj->initialize();
 
             if (!$this->validateRequest($actionObj)) {
@@ -429,9 +373,7 @@ class Dispatcher
 
             $actionObj->afterRequest();
         } catch (NoAccessException $ex) {
-            if (isset($actionObj) && is_object($actionObj)) {
-                $actionObj->onNoAccess();
-            }
+            $this->onNoAccessIfPossible($actionObj ?? null);
             throw $ex;
         } catch (InvalidUserException $ex) {
             $this->handleInvalidUserAndNoAccessException($ex);
@@ -451,14 +393,7 @@ class Dispatcher
     private function doApiAction(NgsRoute $route): void
     {
         try {
-            $action = $route->getAction();
-            $action = str_replace('-', '\\', $action);
-
-            if (class_exists($action) === false) {
-                throw new DebugException($action . ' Action Not found');
-            }
-
-            $actionObj = new $action();
+            $actionObj = $this->instantiateAction($route->getAction());
             $actionObj->setAction($route->offsetGet('action_method'));
             $actionObj->setRequestValidators($route->offsetGet('request_params'));
             $actionObj->setResponseValidators($route->offsetGet('response_params'));
@@ -480,14 +415,10 @@ class Dispatcher
 
             $actionObj->afterRequest();
         } catch (NoAccessException $ex) {
-            if (isset($actionObj) && is_object($actionObj)) {
-                $actionObj->onNoAccess();
-            }
+            $this->onNoAccessIfPossible($actionObj ?? null);
             throw $ex;
         } catch (InvalidUserException $ex) {
-            if (isset($actionObj) && is_object($actionObj)) {
-                $actionObj->onNoAccess();
-            }
+            $this->onNoAccessIfPossible($actionObj ?? null);
             throw $ex;
         }
     }
@@ -511,26 +442,13 @@ class Dispatcher
         if (file_exists($filePath)) {
             $streamer = NGS()->createDefinedInstance('FILE_UTILS', \ngs\util\FileUtils::class);
         } else {
-            switch ($route->getFileType()) {
-                case 'js':
-                    $streamer = NGS()->createDefinedInstance('JS_BUILDER', \ngs\util\JsBuilderV2::class);
-                    break;
-
-                case 'css':
-                    $streamer = NGS()->createDefinedInstance('CSS_BUILDER', \ngs\util\CssBuilder::class);
-                    break;
-
-                case 'less':
-                    $streamer = NGS()->createDefinedInstance('LESS_BUILDER', \ngs\util\LessBuilder::class);
-                    break;
-
-                case 'sass':
-                    $streamer = NGS()->createDefinedInstance('SASS_BUILDER', \ngs\util\SassBuilder::class);
-                    break;
-
-                default:
-                    $streamer = NGS()->createDefinedInstance('FILE_UTILS', \ngs\util\FileUtils::class);
-                    break;
+            $fileType = strtolower((string)$route->getFileType());
+            $builderKey = strtoupper($fileType) . '_BUILDER';
+            if (NGS()->defined($builderKey)) {
+                // Validate against common AbstractBuilder to allow any specific builder implementation
+                $streamer = NGS()->createDefinedInstance($builderKey, \ngs\util\AbstractBuilder::class);
+            } else {
+                $streamer = NGS()->createDefinedInstance('FILE_UTILS', \ngs\util\FileUtils::class);
             }
         }
 
@@ -606,6 +524,81 @@ class Dispatcher
         if (PHP_SAPI === 'fpm-fcgi') {
             session_write_close();
             fastcgi_finish_request();
+        }
+    }
+
+    /**
+     * Helper: redirects to a not found route or echoes 404 and exits
+     *
+     * @param NgsRoutesResolver $routesEngine
+     * @param \ngs\util\RequestContext $requestContext
+     * @return void
+     */
+    private function redirectToNotFound(NgsRoutesResolver $routesEngine, \ngs\util\RequestContext $requestContext): void
+    {
+        $moduleResolver = \ngs\routes\NgsModuleResolver::getInstance();
+        $module = $moduleResolver->resolveModule($requestContext->getRequestUri());
+
+        $route = $routesEngine->getNotFoundLoad($module);
+        if ($route === null || $this->isRedirect === true) {
+            echo '404';
+            exit;
+        }
+
+        $this->isRedirect = true;
+        $this->dispatch($route);
+    }
+
+    /**
+     * Helper: normalize class name from hyphenated route
+     */
+    private function normalizeClassName(string $class): string
+    {
+        return str_replace('-', '\\', $class);
+    }
+
+    /**
+     * Helper: instantiate a Load class or throw DebugException
+     *
+     * @param string $action
+     * @return object
+     * @throws DebugException
+     */
+    private function instantiateLoad(string $action): object
+    {
+        $class = $this->normalizeClassName($action);
+        if (class_exists($class) === false) {
+            throw new DebugException($class . ' Load Not found');
+        }
+        return new $class();
+    }
+
+    /**
+     * Helper: instantiate an Action class or throw DebugException
+     *
+     * @param string $action
+     * @return object
+     * @throws DebugException
+     */
+    private function instantiateAction(string $action): object
+    {
+        $class = $this->normalizeClassName($action);
+        if (class_exists($class) === false) {
+            throw new DebugException($class . ' Action Not found');
+        }
+        return new $class();
+    }
+
+    /**
+     * Helper: call onNoAccess on object if method exists
+     *
+     * @param mixed $obj
+     * @return void
+     */
+    private function onNoAccessIfPossible($obj): void
+    {
+        if (is_object($obj) && method_exists($obj, 'onNoAccess')) {
+            $obj->onNoAccess();
         }
     }
 

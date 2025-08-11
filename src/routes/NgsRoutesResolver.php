@@ -96,13 +96,10 @@ class NgsRoutesResolver
             $package = $route->getModule();
         }
 
-        // Attach per-group notFoundRequest
-        $routesConfig = $this->getRoutesConfig($module);
-
-        if (isset($routesConfig[$package]['404']['request'])) {
-            $route->setNotFoundRequest($routesConfig[$package]['404']['request']);
-        } elseif (isset($routesConfig[self::DEFAULT_REQUEST_IDENTIFIER]['404']['request'])) {
-            $route->setNotFoundRequest($routesConfig[self::DEFAULT_REQUEST_IDENTIFIER]['404']['request']);
+        // Attach per-group notFoundRequest from 404 files
+        $notFoundRequest = $this->getNotFoundRouteForRequest($module, is_string($package) ? $package : ($package instanceof \ngs\NgsModule ? $package->getName() : self::DEFAULT_PACKAGE_IDENTIFIER));
+        if ($notFoundRequest) {
+            $route->setNotFoundRequest($notFoundRequest);
         }
 
         return $route;
@@ -171,13 +168,19 @@ class NgsRoutesResolver
         // Remaining segments are considered arguments
         $args = $this->getArguments($segments);
 
+        // For pattern matching, consider the full tail (identifier + args)
+        $fullIdentifier = $requestIdentifier;
+        if ($fullIdentifier !== '' && !empty($args)) {
+            $fullIdentifier .= '/' . implode('/', $args);
+        }
+
         $routesConfig = $this->getRoutesConfig($module, $package);
 
         if ($routesConfig === null) {
             throw new NotFoundException('Routes configuration not found');
         }
 
-        $matchedRouteConfig = $this->getMatchedRouteConfig($routesConfig, $requestIdentifier);
+        $matchedRouteConfig = $this->getMatchedRouteConfig($routesConfig, $fullIdentifier);
 
         $matchRequestType = $matchedRouteConfig->getRequestType();
 
@@ -197,9 +200,19 @@ class NgsRoutesResolver
 
         $route->setRequest($requestClassPath);
         $route->setType($matchRequestType);
-        $route->setArgs($args);
+        // Merge named args from matched config with positional args; if route pattern had params, prefer named only
+        $finalArgs = $matchedRouteConfig->getArgs();
+        $hasParamsInPattern = str_contains($matchedRouteConfig->getRoute() ?? '', ':') || str_contains($matchedRouteConfig->getRoute() ?? '', '[:') || str_contains($matchedRouteConfig->getRoute() ?? '', '[/:');
+        if (!$hasParamsInPattern) {
+            $finalArgs = array_merge($finalArgs, $args);
+        }
+        $route->setArgs($finalArgs);
         $route->setMatched(true);
         $route->setModule($module);
+        // Expose nestedLoad
+        if ($matchedRouteConfig->hasNestedLoad()) {
+            $route->setNestedLoad($matchedRouteConfig->getNestedLoad());
+        }
 
         return $route;
     }
@@ -343,9 +356,37 @@ class NgsRoutesResolver
 
     private function getNotFoundRouteForRequest(NgsModule $module, string $package)
     {
-        $routeConfig = $this->getRoutesConfig($module, $package);
+        $routesDir = $this->getRoutesDir($module);
+        $candidates = [
+            $routesDir . '/' . $package . '.404.json',
+            $routesDir . '/404.json'
+        ];
 
+        foreach ($candidates as $file) {
+            if (file_exists($file)) {
+                $data = json_decode(file_get_contents($file), true);
+                if (is_array($data)) {
+                    // If associative with 'request' or 'action'
+                    if (isset($data['request']) && is_string($data['request'])) {
+                        return $data['request'];
+                    }
+                    if (isset($data['action']) && is_string($data['action'])) {
+                        return $data['action'];
+                    }
+                    // If list, take first element's request/action
+                    if (isset($data[0]) && is_array($data[0])) {
+                        if (isset($data[0]['request']) && is_string($data[0]['request'])) {
+                            return $data[0]['request'];
+                        }
+                        if (isset($data[0]['action']) && is_string($data[0]['action'])) {
+                            return $data[0]['action'];
+                        }
+                    }
+                }
+            }
+        }
 
+        return null;
     }
 
     //-----------------------------------------------------------------------------------
@@ -417,38 +458,31 @@ class NgsRoutesResolver
      */
     private function getMatchedRouteConfig(array $routesConfigArray, string $requestIdentifier): NgsRouteConfig
     {
-        // Step 1: Try exact matching first
-        foreach ($routesConfigArray as $routeConfig) {
-            $routePattern = $routeConfig['route'] ?? '';
-
-            // Handle exact string match
-            if ($routePattern === $requestIdentifier) {
-                return NgsRouteConfig::fromArray($routeConfig);
-            }
-        }
-
-        // Step 2: Try parameterized route matching
+        // Single-pass in-order matching: check each route as defined
         foreach ($routesConfigArray as $routeConfig) {
             $routePattern = $routeConfig['route'] ?? '';
             $constraints = $routeConfig['constraints'] ?? [];
 
-            // Skip if no parameters in route
-            if (strpos($routePattern, ':') === false) {
-                continue;
-            }
+            $hasParams = strpos($routePattern, ':') !== false || str_contains($routePattern, '[:') || str_contains($routePattern, '[/:');
 
-            $matchResult = $this->matchParameterizedRoutePattern($requestIdentifier, $routePattern, $constraints);
-            if ($matchResult !== null) {
-                // Store extracted parameters in args
-                if (!empty($matchResult)) {
-                    $existingArgs = $routeConfig['args'] ?? [];
-                    $routeConfig['args'] = array_merge($existingArgs, $matchResult);
+            if ($hasParams) {
+                $matchResult = $this->matchParameterizedRoutePattern($requestIdentifier, $routePattern, $constraints);
+                if ($matchResult !== null) {
+                    // Merge extracted named parameters into args
+                    if (!empty($matchResult)) {
+                        $existingArgs = $routeConfig['args'] ?? [];
+                        $routeConfig['args'] = array_merge($existingArgs, $matchResult);
+                    }
+                    return NgsRouteConfig::fromArray($routeConfig);
                 }
-                return NgsRouteConfig::fromArray($routeConfig);
+            } else {
+                // Exact match (including possibility of empty string default)
+                if ($routePattern === $requestIdentifier) {
+                    return NgsRouteConfig::fromArray($routeConfig);
+                }
             }
         }
 
-        // Step 3: No match found, throw exception
         throw new NotFoundException('No matching route found for: ' . $requestIdentifier);
     }
 
@@ -463,20 +497,17 @@ class NgsRoutesResolver
      */
     private function matchParameterizedRoutePattern(string $requestIdentifier, string $routePattern, array $constraints): ?array
     {
-        // Convert route pattern to regex
+        // Convert route pattern to regex (uses default [^/]+ for params without constraints)
         $regexPattern = $this->convertRoutePatternToRegex($routePattern, $constraints);
 
-        // Try to match
         if (preg_match($regexPattern, $requestIdentifier, $matches)) {
             $extractedParams = [];
-
-            // Extract named parameters
-            foreach ($constraints as $paramName => $constraint) {
-                if (isset($matches[$paramName]) && $matches[$paramName] !== '') {
-                    $extractedParams[$paramName] = $matches[$paramName];
+            // Collect all named capture groups from the match
+            foreach ($matches as $key => $value) {
+                if (is_string($key) && $value !== '') {
+                    $extractedParams[$key] = $value;
                 }
             }
-
             return $extractedParams;
         }
 
@@ -495,33 +526,44 @@ class NgsRoutesResolver
     {
         $pattern = $routePattern;
 
-        // Handle optional parameters [/:param] first (before required ones to avoid conflicts)
-        foreach ($constraints as $paramName => $constraint) {
-            if (strpos($pattern, '[/:' . $paramName . ']') !== false) {
+        // Helper to get constraint or default
+        $getConstraint = function (string $name) use ($constraints): string {
+            return $constraints[$name] ?? '[^/]+'; // default if no constraint provided
+        };
+
+        // Replace optional parameters [/:param]
+        if (preg_match_all('/\[\/:(\w+)\]/', $pattern, $m)) {
+            foreach ($m[1] as $paramName) {
+                $constraint = $getConstraint($paramName);
                 $pattern = str_replace(
-                    '[/:' . $paramName . ']',
-                    '(?:/(?<' . $paramName . '>' . $constraint . '))?',
+                    '[/:'.$paramName.']',
+                    '(?:/(?<'.$paramName.'>'.$constraint.'))?',
                     $pattern
                 );
             }
         }
 
-        // Handle required parameters [:param] and :param
-        foreach ($constraints as $paramName => $constraint) {
-            // Handle [:param] syntax (required parameter)
-            if (strpos($pattern, '[:' . $paramName . ']') !== false) {
+        // Replace required parameters [:param]
+        if (preg_match_all('/\[:(\w+)\]/', $pattern, $m)) {
+            foreach ($m[1] as $paramName) {
+                $constraint = $getConstraint($paramName);
                 $pattern = str_replace(
-                    '[:' . $paramName . ']',
-                    '(?<' . $paramName . '>' . $constraint . ')',
+                    '[:'.$paramName.']',
+                    '(?<'.$paramName.'>'.$constraint.')',
                     $pattern
                 );
-            } // Handle :param syntax (required parameter)
-            elseif (strpos($pattern, ':' . $paramName) !== false) {
-                $pattern = str_replace(
-                    ':' . $paramName,
-                    '(?<' . $paramName . '>' . $constraint . ')',
-                    $pattern
-                );
+            }
+        }
+
+        // Replace :param (not already replaced)
+        if (preg_match_all('/:(\w+)/', $pattern, $m)) {
+            foreach ($m[1] as $paramName) {
+                // skip if already converted to named group
+                if (strpos($pattern, '?<'.$paramName.'>') !== false) {
+                    continue;
+                }
+                $constraint = $getConstraint($paramName);
+                $pattern = preg_replace('/:'.$paramName.'\b/', '(?<'.$paramName.'>'.$constraint.')', $pattern);
             }
         }
 
@@ -618,7 +660,8 @@ class NgsRoutesResolver
         $requestIdentifier = array_shift($urlSegments);
 
         if ($requestIdentifier === null) {
-            $requestIdentifier = self::DEFAULT_REQUEST_IDENTIFIER;
+            // Per docs, missing request maps to empty string (default route "")
+            $requestIdentifier = '';
         }
 
         return $requestIdentifier;

@@ -1,9 +1,3 @@
-Here is a **combined and streamlined Markdown documentation** for the Naghashyan Framework routing system, merging both your general routing explanation and the detailed JSON route rules.
-I ensured the rules and behavior described in your second doc take precedence where there are overlaps or ambiguity.
-
----
-
-````markdown
 # Routing Documentation for Naghashyan Framework
 
 ## Overview
@@ -191,6 +185,31 @@ For modules declared as type `PATH`, the first segment identifies the module:
 
 ---
 
+## Static Files Routing and Builders
+
+When the URL points to a static file (e.g., ends with `.js` or `.css`), the router creates an `NgsFileRoute` instead of a Load/Action route.
+
+- Detection: `NgsRoutesResolver::resolveRoute()` checks segments; if it looks like a file, it constructs `NgsFileRoute` with:
+  - `fileUrl`: path like `js/app.js` or `css/site.css`
+  - `fileType`: `js`, `css`, `less`, `sass`, etc. If `fileType` is `css` but the URL contains `less` or `sass` directory segments, it is switched accordingly.
+  - `module`: the resolved module instance for the request
+- Dispatching: `Dispatcher::streamStaticFile()`:
+  - If the file exists under `<module>/<PUBLIC_DIR>/<fileUrl>`, it is served directly.
+  - Otherwise, Dispatcher picks a Builder based on `fileType`:
+    - `js` → `JsBuilderV2`
+    - `css` → `CssBuilder`
+    - `less` → `LessBuilder`
+    - `sass` → `SassBuilder`
+    - default → `FileUtils`
+  - The selected builder builds/streams the asset considering environment (development vs. production).
+- Development vs Production:
+  - Development: builders stream sources or compile on-the-fly (no cache).
+  - Production: builders generate files under `<PUBLIC_DIR>/<PUBLIC_OUTPUT_DIR>/<type-subdir>/` and serve with cache.
+
+For in-depth details on builder behavior, configuration, `builder.json` structure, and environment modes, see Builders and File Streaming: [builders.md](./builders.md).
+
+---
+
 ## Summary Table
 
 | Route Syntax                | Constraints                        | Example URL                                    | Notes                         |
@@ -217,10 +236,3 @@ For modules declared as type `PATH`, the first segment identifies the module:
 * `/account/overview` triggers `loads.account.main.main` with nested load `loads.account.main.overview`.
 * `/account/update-email/ABC123` matches `update-email/[:code]`, where `ABC123` is passed as argument `code`.
 * If a parameter fails the regex constraint, the route is **not matched** and a 404 is returned.
-
-```
-
----
-
-**If you need this as a downloadable `.md` file or want to integrate with a specific documentation tool (like Docusaurus or GitBook), let me know!**
-```

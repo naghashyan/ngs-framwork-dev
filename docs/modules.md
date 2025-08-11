@@ -1,4 +1,4 @@
-# NGS Framework Modules Management - README
+# NGS Framework Modules Management
 
 ## Overview
 
