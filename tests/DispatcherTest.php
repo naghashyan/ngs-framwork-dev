@@ -1,294 +1,176 @@
 <?php
 
-namespace ngs\tests {
+declare(strict_types=1);
 
-// Include the required files directly since autoloading might not be working
-    require_once __DIR__ . '/../src/Dispatcher.php';
-    require_once __DIR__ . '/../src/event/EventManagerInterface.php';
-    require_once __DIR__ . '/../src/event/EventManager.php';
-    require_once __DIR__ . '/../src/event/structure/AbstractEventStructure.php';
-    require_once __DIR__ . '/../src/event/structure/EventDispatchedStructure.php';
-    require_once __DIR__ . '/../src/event/structure/BeforeResultDisplayEventStructure.php';
-    require_once __DIR__ . '/../src/event/subscriber/AbstractEventSubscriber.php';
-
-    use ngs\Dispatcher;
-    use ngs\event\EventManagerInterface;
-    use ngs\event\structure\AbstractEventStructure;
-
-    /**
-     * Simple test script to verify Dispatcher functionality with EventManagerInterface
-     */
-// Create a mock EventManagerInterface implementation for testing
-    class MockEventManager implements EventManagerInterface
-    {
-        public $loadSubscribersCalled = false;
-        public $subscribeToEventsCalled = false;
-        public $dispatchCalled = false;
-        public $subscribers = [];
-        public $visibleEvents = ['test' => ['name' => 'Test Event', 'bulk_is_available' => true, 'params' => []]];
-
-        public function dispatch(AbstractEventStructure $event): void
-        {
-            $this->dispatchCalled = true;
-            echo "MockEventManager: dispatch called\n";
-        }
-
-        public function subscribeToEvent(string $eventName, $subscriber, string $method): void
-        {
-            echo "MockEventManager: subscribeToEvent called with $eventName\n";
-        }
-
-        public function loadSubscribers(bool $loadAll = false): array
-        {
-            $this->loadSubscribersCalled = true;
-            echo "MockEventManager: loadSubscribers called with loadAll=" . ($loadAll ? "true" : "false") . "\n";
-            return $this->subscribers;
-        }
-
-        public function subscribeToEvents(array $subscribers): void
-        {
-            $this->subscribeToEventsCalled = true;
-            echo "MockEventManager: subscribeToEvents called with " . count($subscribers) . " subscribers\n";
-        }
-
-        public function getVisibleEvents(): array
-        {
-            echo "MockEventManager: getVisibleEvents called\n";
-            return $this->visibleEvents;
-        }
-    }
-}
-
-namespace {
-// Function to simulate NGS() global function
-    if (!function_exists('NGS')) {
-        function NGS()
-        {
+// Important: Provide ngs\NGS() stub first
+namespace ngs {
+    if (!function_exists('ngs\\NGS')) {
+        function NGS() {
             static $instance = null;
             if ($instance === null) {
                 $instance = new class {
-                    private $data = [];
+                    public array $data = [];
+
+                    public function defined(string $key): bool { return array_key_exists($key, $this->data); }
+                    public function getDefinedValue(string $key) { return $this->data[$key] ?? null; }
+                    public function set(string $key, $value): self { $this->data[$key] = $value; return $this; }
+
                     private $argsInstance = null;
-
-                    public function get($key)
-                    {
-                        return isset($this->data[$key]) ? $this->data[$key] : null;
-                    }
-
-                    public function set($key, $value)
-                    {
-                        $this->data[$key] = $value;
-                        return $this;
-                    }
-
-                    public function args()
-                    {
+                    public function args() {
                         if ($this->argsInstance === null) {
                             $this->argsInstance = new class {
-                                private $args = [];
-
-                                public function args()
-                                {
-                                    return $this->args;
-                                }
-
-                                public function setArgs($args)
-                                {
-                                    $this->args = $args;
-                                    return true;
-                                }
-
-                                public function getArgs()
-                                {
-                                    return $this->args;
-                                }
+                                private array $args = [];
+                                public function args(): array { return $this->args; }
+                                public function setArgs(array $args): bool { $this->args = $args; return true; }
+                                public function getArgs(): array { return $this->args; }
                             };
                         }
                         return $this->argsInstance;
                     }
 
-                    public function createDefinedInstance($key, $class)
-                    {
-                        if ($key === 'ROUTES_ENGINE') {
-                            return new class {
-                                public function getDynamicLoad($uri)
-                                {
-                                    return ['matched' => true, 'type' => 'load', 'action' => 'MockAction'];
-                                }
-
-                                public function getContentLoad()
-                                {
-                                    return 'test_content_load';
-                                }
-
-                                public function getNotFoundLoad()
-                                {
-                                    return null;
-                                }
-                            };
+                    public function createDefinedInstance(string $key, string $class) {
+                        switch ($key) {
+                            case 'REQUEST_CONTEXT':
+                                return new class {
+                                    public function getRequestUri(): string { return '/test'; }
+                                    public function isAjaxRequest(): bool { return false; }
+                                    public array $redirects = [];
+                                    public function redirect(string $url): void { $this->redirects[] = $url; }
+                                };
+                            case 'TEMPLATE_ENGINE':
+                                return new class {
+                                    public array $log = [];
+                                    public int $httpCode = 200;
+                                    public array $json = [];
+                                    public function setType($type): void { $this->log[] = [__FUNCTION__, $type]; }
+                                    public function setTemplate($template): void { $this->log[] = [__FUNCTION__, $template]; }
+                                    public function setPermalink($permalink): void { $this->log[] = [__FUNCTION__, $permalink]; }
+                                    public function display($json = false): void { $this->log[] = [__FUNCTION__, $json]; }
+                                    public function setHttpStatusCode($code): void { $this->httpCode = (int)$code; $this->log[] = [__FUNCTION__, $code]; }
+                                    public function assignJson($key, $value): void { $this->json[$key] = $value; $this->log[] = [__FUNCTION__, $key, $value]; }
+                                    public function assignJsonParams($params): void { $this->json['params'] = $params; $this->log[] = [__FUNCTION__, $params]; }
+                                };
+                            case 'LOAD_MAPPER':
+                                return new class {
+                                    public function getNgsPermalink(): string { return '/test-permalink'; }
+                                };
+                            case 'SESSION_MANAGER':
+                                return new class {
+                                    public function validateRequest($request): bool { return true; }
+                                };
+                            case 'ROUTES_ENGINE':
+                                return new class { };
+                            default:
+                                return new $class();
                         }
-                        if ($key === 'REQUEST_CONTEXT') {
-                            return new class {
-                                public function getRequestUri()
-                                {
-                                    return '/test';
-                                }
-
-                                public function isAjaxRequest()
-                                {
-                                    return false;
-                                }
-
-                                public function redirect($url)
-                                {
-                                    echo "Redirecting to $url\n";
-                                }
-                            };
-                        }
-                        if ($key === 'TEMPLATE_ENGINE') {
-                            return new class {
-                                public function setType($type)
-                                {
-                                }
-
-                                public function setTemplate($template)
-                                {
-                                }
-
-                                public function setPermalink($permalink)
-                                {
-                                }
-
-                                public function display($json = false)
-                                {
-                                    echo "Template displayed\n";
-                                }
-
-                                public function setHttpStatusCode($code)
-                                {
-                                }
-
-                                public function assignJson($key, $value)
-                                {
-                                }
-
-                                public function assignJsonParams($params)
-                                {
-                                }
-                            };
-                        }
-                        if ($key === 'LOAD_MAPPER') {
-                            return new class {
-                                public function getNgsPermalink()
-                                {
-                                    return '/test';
-                                }
-                            };
-                        }
-                        if ($key === 'SESSION_MANAGER') {
-                            return new class {
-                                public function validateRequest($request)
-                                {
-                                    return true;
-                                }
-                            };
-                        }
-                        return new $class();
-                    }
-
-                    public function getModuleDirByNS($ns)
-                    {
-                        return __DIR__ . '/mock_module';
                     }
                 };
 
-                // Set up mock data
-                $instance->set('CONF_DIR', 'conf');
-                $instance->set('NGS_CMS_NS', 'ngs\\cms');
-                $instance->set('NGS_ROOT', __DIR__);
-                $instance->set('NGS_MODULS_ROUTS', 'modules.json');
+                // defaults used by Dispatcher conditions
                 $instance->set('ENVIRONMENT', 'development');
-                $instance->set('SEND_HTTP_PUSH', false);
+                $instance->set('display_json', false);
+                $instance->set('PUBLIC_DIR', 'htdocs');
             }
             return $instance;
         }
     }
+}
 
-// Create a mock action class
-    class MockAction
+namespace Tests {
+
+use ngs\Dispatcher;
+use ngs\event\EventManagerInterface;
+use PHPUnit\Framework\TestCase;
+
+// Create global aliases for mock loads so Dispatcher->instantiateLoad('MockLoad') works
+\class_alias(\Tests\Helper\MockLoad::class, 'MockLoad');
+\class_alias(\Tests\Helper\MockValidateLoad::class, 'MockValidateLoad');
+
+class DispatcherTest extends TestCase
+{
+    private function makeDispatcherWithEventMock(?EventManagerInterface &$eventMock = null): Dispatcher
     {
-        private $loadName = '';
-
-        public function initialize()
-        {
-            echo "MockAction: initialize called\n";
-        }
-
-        public function service()
-        {
-            echo "MockAction: service called\n";
-        }
-
-        public function getParams()
-        {
-            return ['result' => 'success'];
-        }
-
-        public function afterRequest()
-        {
-            echo "MockAction: afterRequest called\n";
-        }
-
-        public function onNoAccess()
-        {
-            echo "MockAction: onNoAccess called\n";
-        }
-
-        public function setLoadName($loadName)
-        {
-            $this->loadName = $loadName;
-            echo "MockAction: setLoadName called with " . ($loadName ? $loadName : "empty") . "\n";
-        }
-
-        public function getNgsLoadType()
-        {
-            return 'html';
-        }
-
-        public function getTemplate()
-        {
-            return 'test_template';
-        }
+        $eventMock = new class implements EventManagerInterface {
+            public bool $loadSubscribersCalled = false;
+            public bool $subscribeToEventsCalled = false;
+            public bool $dispatchCalled = false;
+            public array $visibleEvents = ['e' => ['name' => 'BeforeResultDisplay', 'bulk_is_available' => true, 'params' => []]];
+            public function dispatch(\ngs\event\structure\AbstractEventStructure $event): void { $this->dispatchCalled = true; }
+            public function subscribeToEvent(string $eventName, $subscriber, string $method): void {}
+            public function loadSubscribers(bool $loadAll = false): array { $this->loadSubscribersCalled = true; return []; }
+            public function subscribeToEvents(array $subscribers): void { $this->subscribeToEventsCalled = true; }
+            public function getVisibleEvents(): array { return $this->visibleEvents; }
+        };
+        return new Dispatcher($eventMock);
     }
 
-// Test Dispatcher with mock EventManager
-    echo "Testing Dispatcher with mock EventManager:\n";
-
-// Create a mock EventManager
-    $mockEventManager = new \ngs\tests\MockEventManager();
-
-// Create a Dispatcher with the mock EventManager
-    $dispatcher = new \ngs\Dispatcher($mockEventManager);
-
-// Test getVisibleEvents
-    echo "\nTesting getVisibleEvents:\n";
-    $visibleEvents = $dispatcher->getVisibleEvents();
-    echo "getVisibleEvents result: " . (count($visibleEvents) > 0 ? "PASS" : "FAIL") . "\n";
-
-// Test dispatch
-    echo "\nTesting dispatch:\n";
-    try {
-        $dispatcher->dispatch();
-        echo "dispatch: PASS\n";
-    } catch (\Exception $e) {
-        echo "dispatch: FAIL - " . $e->getMessage() . "\n";
+    public function testGetVisibleEvents(): void
+    {
+        $dispatcher = $this->makeDispatcherWithEventMock($em);
+        $events = $dispatcher->getVisibleEvents();
+        $this->assertSame($em->visibleEvents, $events);
     }
 
-// Verify that the EventManager methods were called
-    echo "\nVerifying EventManager method calls:\n";
-    echo "loadSubscribers called: " . ($mockEventManager->loadSubscribersCalled ? "PASS" : "FAIL") . "\n";
-    echo "subscribeToEvents called: " . ($mockEventManager->subscribeToEventsCalled ? "PASS" : "FAIL") . "\n";
+    public function testLoadPageHappyPathDispatchesEventAndDisplaysTemplate(): void
+    {
+        $dispatcher = $this->makeDispatcherWithEventMock($em);
 
-    echo "\nTest completed.\n";
+        // Call loadPage with our alias 'MockLoad'
+        $dispatcher->loadPage('MockLoad');
 
+        // Assert event dispatched before result display
+        $this->assertTrue($em->dispatchCalled, 'BeforeResultDisplay event should be dispatched');
+
+        // Inspect our template engine log from ngs\NGS()->createDefinedInstance('TEMPLATE_ENGINE')
+        $templater = \ngs\NGS()->createDefinedInstance('TEMPLATE_ENGINE', \stdClass::class);
+        $log = $templater->log;
+
+        // Ensure type and template were set, permalink set, and display was called
+        $this->assertContains(['setType', 'html'], $log);
+        $this->assertContains(['setTemplate', 'test_template'], $log);
+        $this->assertContains(['setPermalink', '/test-permalink'], $log);
+        $this->assertContains(['display', false], $log);
+    }
+
+    public function testValidateSetsJsonTypeAssignsParamsAndDisplays(): void
+    {
+        $dispatcher = $this->makeDispatcherWithEventMock($em);
+        $dispatcher->validate('MockValidateLoad');
+
+        $templater = \ngs\NGS()->createDefinedInstance('TEMPLATE_ENGINE', \stdClass::class);
+        $log = $templater->log;
+
+        // Should set type json and display
+        $this->assertContains(['setType', 'json'], $log);
+        $this->assertContains(['display', false], $log);
+
+        // Should have assigned params coming from the load
+        $this->assertArrayHasKey('params', $templater->json);
+        $this->assertSame(['validated' => true], $templater->json['params']);
+    }
+}
+}
+
+namespace Tests\Helper {
+// Helper classes that emulate Load behavior expected by Dispatcher
+class MockLoad
+{
+    public array $calls = [];
+    public function initialize(): void { $this->calls[] = __FUNCTION__; }
+    public function service(): void { $this->calls[] = __FUNCTION__; }
+    public function getNgsLoadType(): string { return 'html'; }
+    public function getTemplate(): string { return 'test_template'; }
+    public function afterRequest(): void { $this->calls[] = __FUNCTION__; }
+    public function onNoAccess(): void { $this->calls[] = __FUNCTION__; }
+}
+
+class MockValidateLoad
+{
+    public array $calls = [];
+    public function initialize(): void { $this->calls[] = __FUNCTION__; }
+    public function validate(): void { $this->calls[] = __FUNCTION__; }
+    public function getParams(): array { return ['validated' => true]; }
+    public function afterRequest(): void { $this->calls[] = __FUNCTION__; }
+    public function onNoAccess(): void { $this->calls[] = __FUNCTION__; }
+}
 }
