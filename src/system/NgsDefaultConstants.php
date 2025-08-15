@@ -19,7 +19,7 @@
  * file that was distributed with this source code.
  *
  */
-
+//TODO: ZN: this should be removed - already have it in the NGS.php
 /*
  |--------------------------------------------------------------------------
  | DEFINING VARIABLES IF SCRIPT RUNNING FROM COMMAND LINE
