@@ -29,9 +29,13 @@ use ngs\exceptions\NgsErrorException;
 use ngs\exceptions\NoAccessException;
 use ngs\exceptions\NotFoundException;
 use ngs\exceptions\RedirectException;
+use ngs\routes\NgsModuleResolver;
 use ngs\routes\NgsRoute;
 use ngs\routes\NgsRoutesResolver;
 use ngs\routes\NgsFileRoute;
+use ngs\templater\NgsTemplater;
+use ngs\util\AbstractBuilder;
+use ngs\util\FileUtils;
 use ngs\util\NgsArgs;
 use ngs\util\NgsEnvironmentContext;
 use ngs\util\RequestContext;
@@ -60,6 +64,18 @@ class Dispatcher
      */
     private EventManagerInterface $eventManager;
 
+    /** @var RequestContext */
+    private RequestContext $requestContext;
+
+    /** @var NgsRoutesResolver */
+    private NgsRoutesResolver $routesEngine;
+
+    /** @var NgsModuleResolver */
+    private NgsModuleResolver $moduleResolver;
+
+    /** @var NgsTemplater */
+    private NgsTemplater $templateEngine;
+
     /**
      * Constructor
      *
@@ -68,6 +84,11 @@ class Dispatcher
     public function __construct(?EventManagerInterface $eventManager = null)
     {
         $this->eventManager = $eventManager ?? EventManager::getInstance();
+        // Initialize shared instances as class properties
+        $this->requestContext = NGS()->createDefinedInstance('REQUEST_CONTEXT', RequestContext::class);
+        $this->routesEngine = NGS()->createDefinedInstance('ROUTES_ENGINE', NgsRoutesResolver::class);
+        $this->moduleResolver = NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', NgsModuleResolver::class);
+        $this->templateEngine = NGS()->createDefinedInstance('TEMPLATE_ENGINE', NgsTemplater::class);
     }
 
     /**
@@ -81,20 +102,17 @@ class Dispatcher
      */
     public function dispatch(?NgsRoute $route = null): void
     {
+        //TODO: ZN: revise the events management
         $subscribers = $this->eventManager->loadSubscribers();
         $this->eventManager->subscribeToEvents($subscribers);
+
         try {
-            /** @var NgsRoutesResolver $routesEngine */
-            $routesEngine = NGS()->createDefinedInstance('ROUTES_ENGINE', \ngs\routes\NgsRoutesResolver::class);
-            $requestContext = NGS()->createDefinedInstance('REQUEST_CONTEXT', RequestContext::class);
-            $templateEngine = NGS()->createDefinedInstance('TEMPLATE_ENGINE', \ngs\templater\NgsTemplater::class);
 
             if ($route === null) {
-                $requestUri = $requestContext->getRequestUri();
+                $requestUri = $this->requestContext->getRequestUri();
 
                 // First: Detect and resolve the module from the request
-                $moduleResolver = \ngs\routes\NgsModuleResolver::getInstance();
-                $module = $moduleResolver->resolveModule($requestUri);
+                $module = $this->moduleResolver->resolveModule($requestUri);
 
                 if ($module === null) {
                     // Handle 404 (module not found)
@@ -102,12 +120,7 @@ class Dispatcher
                 }
 
                 // Second: Pass the module instance to the RoutesResolver
-                $route = $routesEngine->resolveRoute($module, $requestUri);
-            }
-
-            //TODO: MJ: for what is this?
-            if ($route instanceof NgsFileRoute && $route->getFileUrl() !== null && str_contains($route->getFileUrl(), 'js/ngs')) {
-                $route->setFileUrl(str_replace("js/ngs", "js/admin/ngs", $route->getFileUrl()));
+                $route = $this->routesEngine->resolveRoute($module, $requestUri);
             }
 
             if ($route->isMatched() === false) {
@@ -153,28 +166,28 @@ class Dispatcher
             }
 
             // Handle 404 via helper
-            $this->redirectToNotFound($routesEngine, $requestContext);
+            $this->redirectToNotFound($module);
         } catch (RedirectException $ex) {
-            $requestContext->redirect($ex->getRedirectTo());
+            $this->requestContext->redirect($ex->getRedirectTo());
         } catch (NotFoundException $ex) {
             try {
                 if ($ex->getRedirectUrl() !== '') {
-                    $requestContext->redirect($ex->getRedirectUrl());
+                    $this->requestContext->redirect($ex->getRedirectUrl());
                     return;
                 }
 
                 // Handle 404 via helper
-                $this->redirectToNotFound($routesEngine, $requestContext);
+                $this->redirectToNotFound();
             } catch (\Throwable $exp) {
                 header($_SERVER["SERVER_PROTOCOL"] . " 404 Not Found", true, 404);
                 exit;
             }
         } catch (NgsErrorException $ex) {
-            $templateEngine->setHttpStatusCode($ex->getHttpCode());
-            $templateEngine->assignJson('code', $ex->getCode());
-            $templateEngine->assignJson('msg', $ex->getMessage());
-            $templateEngine->assignJson('params', $ex->getParams());
-            $templateEngine->display(true);
+            $this->templateEngine->setHttpStatusCode($ex->getHttpCode());
+            $this->templateEngine->assignJson('code', $ex->getCode());
+            $this->templateEngine->assignJson('msg', $ex->getMessage());
+            $this->templateEngine->assignJson('params', $ex->getParams());
+            $this->templateEngine->display(true);
         } catch (InvalidUserException $ex) {
             $this->handleInvalidUserAndNoAccessException($ex);
         } catch (NoAccessException $ex) {
@@ -213,19 +226,16 @@ class Dispatcher
                 $loadObj->onNoAccess();
             }
 
-            $routesEngine = NGS()->createDefinedInstance('ROUTES_ENGINE', \ngs\routes\NgsRoutesResolver::class);
-
             //TODO:ZN: refactor this part, what is content load?
-            //$contentLoad = $routesEngine->getContentLoad();
+            //$contentLoad = $this->routesEngine->getContentLoad();
             //$loadObj->setLoadName($contentLoad);
             $loadObj->service();
 
-            $templateEngine = NGS()->createDefinedInstance('TEMPLATE_ENGINE', \ngs\templater\NgsTemplater::class);
-            $templateEngine->setType($loadObj->getNgsLoadType());
-            $templateEngine->setTemplate($loadObj->getTemplate());
+            $this->templateEngine->setType($loadObj->getNgsLoadType());
+            $this->templateEngine->setTemplate($loadObj->getTemplate());
 
             $loadMapper = NGS()->createDefinedInstance('LOAD_MAPPER', \ngs\routes\NgsLoadMapper::class);
-            $templateEngine->setPermalink($loadMapper->getNgsPermalink());
+            $this->templateEngine->setPermalink($loadMapper->getNgsPermalink());
 
             // Dispatch before result display event
             $this->eventManager->dispatch(new BeforeResultDisplayEventStructure([]));
@@ -268,18 +278,16 @@ class Dispatcher
 
             $loadObj->service();
 
-            $templateEngine = NGS()->createDefinedInstance('TEMPLATE_ENGINE', \ngs\templater\NgsTemplater::class);
-
             if (method_exists($loadObj, 'getNgsLoadType')) {
-                $templateEngine->setType($loadObj->getNgsLoadType());
+                $this->templateEngine->setType($loadObj->getNgsLoadType());
             }
 
             if (method_exists($loadObj, 'getTemplate')) {
-                $templateEngine->setTemplate($loadObj->getTemplate());
+                $this->templateEngine->setTemplate($loadObj->getTemplate());
             }
 
             $loadMapper = NGS()->createDefinedInstance('LOAD_MAPPER', \ngs\routes\NgsLoadMapper::class);
-            $templateEngine->setPermalink($loadMapper->getNgsPermalink());
+            $this->templateEngine->setPermalink($loadMapper->getNgsPermalink());
 
             // Dispatch before result display event
             $this->eventManager->dispatch(new BeforeResultDisplayEventStructure([]));
@@ -319,16 +327,14 @@ class Dispatcher
                 $loadObj->onNoAccess();
             }
 
-            $routesEngine = NGS()->createDefinedInstance('ROUTES_ENGINE', \ngs\routes\NgsRoutesResolver::class);
             //TODO: ZN: this logic should be refactored, what is the contentLoad?
-//            $contentLoad = $routesEngine->getContentLoad();
+//            $contentLoad = $this->routesEngine->getContentLoad();
 //            $loadObj->setLoadName($contentLoad);
             $loadObj->validate();
 
             // Passing arguments
-            $templateEngine = NGS()->createDefinedInstance('TEMPLATE_ENGINE', \ngs\templater\NgsTemplater::class);
-            $templateEngine->setType('json');
-            $templateEngine->assignJsonParams($loadObj->getParams());
+            $this->templateEngine->setType('json');
+            $this->templateEngine->assignJsonParams($loadObj->getParams());
 
             $this->displayResult();
             $this->finishRequest();
@@ -366,9 +372,8 @@ class Dispatcher
             $actionObj->service();
 
             // Passing arguments
-            $templateEngine = NGS()->createDefinedInstance('TEMPLATE_ENGINE', \ngs\templater\NgsTemplater::class);
-            $templateEngine->setType('json');
-            $templateEngine->assignJsonParams($actionObj->getParams());
+            $this->templateEngine->setType('json');
+            $this->templateEngine->assignJsonParams($actionObj->getParams());
 
             $this->displayResult();
             $this->finishRequest();
@@ -408,9 +413,8 @@ class Dispatcher
             $actionObj->service();
 
             // Passing arguments
-            $templateEngine = NGS()->createDefinedInstance('TEMPLATE_ENGINE', \ngs\templater\NgsTemplater::class);
-            $templateEngine->setType('json');
-            $templateEngine->assignJsonParams($actionObj->getParams());
+            $this->templateEngine->setType('json');
+            $this->templateEngine->assignJsonParams($actionObj->getParams());
 
             $this->displayResult();
             $this->finishRequest();
@@ -442,15 +446,15 @@ class Dispatcher
         $filePath = realpath($publicDirForModule . '/' . $route->getFileUrl());
 
         if (file_exists($filePath)) {
-            $streamer = NGS()->createDefinedInstance('FILE_UTILS', \ngs\util\FileUtils::class);
+            $streamer = NGS()->createDefinedInstance('FILE_UTILS', FileUtils::class);
         } else {
             $fileType = strtolower((string)$route->getFileType());
             $builderKey = strtoupper($fileType) . '_BUILDER';
             if (NGS()->defined($builderKey)) {
                 // Validate against common AbstractBuilder to allow any specific builder implementation
-                $streamer = NGS()->createDefinedInstance($builderKey, \ngs\util\AbstractBuilder::class);
+                $streamer = NGS()->createDefinedInstance($builderKey, AbstractBuilder::class);
             } else {
-                $streamer = NGS()->createDefinedInstance('FILE_UTILS', \ngs\util\FileUtils::class);
+                $streamer = NGS()->createDefinedInstance('FILE_UTILS', FileUtils::class);
             }
         }
 
@@ -467,29 +471,26 @@ class Dispatcher
      */
     private function handleInvalidUserAndNoAccessException($ex): void
     {
-        $requestContext = NGS()->createDefinedInstance('REQUEST_CONTEXT', RequestContext::class);
-        $templateEngine = NGS()->createDefinedInstance('TEMPLATE_ENGINE', \ngs\templater\NgsTemplater::class);
-
         // For non-AJAX requests, redirect to the specified URL
-        if (!$requestContext->isAjaxRequest() && !NGS()->getDefinedValue('display_json')) {
-            $requestContext->redirect($ex->getRedirectTo());
+        if (!$this->requestContext->isAjaxRequest() && !NGS()->getDefinedValue('display_json')) {
+            $this->requestContext->redirect($ex->getRedirectTo());
             return;
         }
 
         // For AJAX requests, return JSON response
-        $templateEngine->setHttpStatusCode($ex->getHttpCode());
-        $templateEngine->assignJson('code', $ex->getCode());
-        $templateEngine->assignJson('msg', $ex->getMessage());
+        $this->templateEngine->setHttpStatusCode($ex->getHttpCode());
+        $this->templateEngine->assignJson('code', $ex->getCode());
+        $this->templateEngine->assignJson('msg', $ex->getMessage());
 
         if ($ex->getRedirectTo() !== '') {
-            $templateEngine->assignJson('redirect_to', $ex->getRedirectTo());
+            $this->templateEngine->assignJson('redirect_to', $ex->getRedirectTo());
         }
 
         if ($ex->getRedirectToLoad() !== '') {
-            $templateEngine->assignJson('redirect_to_load', $ex->getRedirectToLoad());
+            $this->templateEngine->assignJson('redirect_to_load', $ex->getRedirectToLoad());
         }
 
-        $templateEngine->display(true);
+        $this->templateEngine->display(true);
     }
 
     /**
@@ -536,12 +537,12 @@ class Dispatcher
      * @param RequestContext $requestContext
      * @return void
      */
-    private function redirectToNotFound(NgsRoutesResolver $routesEngine, RequestContext $requestContext): void
+    private function redirectToNotFound(): void
     {
-        $moduleResolver = \ngs\routes\NgsModuleResolver::getInstance();
-        $module = $moduleResolver->resolveModule($requestContext->getRequestUri());
+        // Use existing module resolver property
+        $module = $this->moduleResolver->resolveModule($requestContext->getRequestUri());
 
-        $route = $routesEngine->getNotFoundLoad($module);
+        $route = $this->routesEngine->getNotFoundLoad($module);
         if ($route === null || $this->isRedirect === true) {
             echo '404';
             exit;
@@ -595,7 +596,6 @@ class Dispatcher
      */
     private function displayResult(): void
     {
-        $templateEngine = NGS()->createDefinedInstance('TEMPLATE_ENGINE', \ngs\templater\NgsTemplater::class);
-        $templateEngine->display();
+        $this->templateEngine->display();
     }
 }

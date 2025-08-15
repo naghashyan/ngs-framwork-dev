@@ -24,7 +24,9 @@
 namespace ngs\request;
 
 use ngs\exceptions\NoAccessException;
+use ngs\routes\NgsModuleResolver;
 use ngs\util\NgsArgs;
+use ngs\util\RequestContext;
 
 abstract class AbstractLoad extends AbstractRequest
 {
@@ -73,8 +75,8 @@ abstract class AbstractLoad extends AbstractRequest
             NGS()->getLoadMapper()->setGlobalParentLoad($this->getLoadName());
         }
         $ns = get_class($this);
-        $requestContext = NGS()->createDefinedInstance('REQUEST_CONTEXT', \ngs\util\RequestContext::class);
-        $resolver = NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', \ngs\routes\NgsModuleResolver::class);
+        $requestContext = NGS()->createDefinedInstance('REQUEST_CONTEXT', RequestContext::class);
+        $resolver = NGS()->createDefinedInstance('MODULES_ROUTES_ENGINE', NgsModuleResolver::class);
         $moduleNS = ($resolver->resolveModule($requestContext->getRequestUri()) ?? NGS())->getName();
         $ns = substr($ns, strpos($ns, $moduleNS) + strlen($moduleNS) + 1);
         $ns = str_replace(['Load', '\\'], ['', '.'], $ns);
