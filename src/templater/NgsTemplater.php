@@ -20,6 +20,7 @@
 
 namespace ngs\templater;
 
+use ngs\request\AbstractRequest;
 use ngs\templater\AbstractTemplater;
 use ngs\templater\NgsSmartyTemplater;
 
@@ -33,9 +34,8 @@ class NgsTemplater extends AbstractTemplater
     private $template = null;
     private array $params = [];
     private $permalink = null;
-    private array $smartyParams = [];
     private int $httpStatusCode = 200;
-    private string $type = 'json';
+    private string $type = AbstractRequest::RESPONSE_TYPE_JSON;
     private bool $ngsFromException = false;
 
     public function __construct()
@@ -86,39 +86,25 @@ class NgsTemplater extends AbstractTemplater
      */
     public function assign($key, $value): void
     {
-        $this->smartyParams[$key] = $value;
-    }
-
-    /**
-     * assign single json parameter
-     *
-     * @access public
-     *
-     * @param String $key
-     * @param mixed $value
-     *
-     * @return void
-     */
-    public function assignJson($key, $value): void
-    {
         $this->params[$key] = $value;
     }
 
     /**
-     * add multiple json parameters
+     * add multiple parameters
      *
      * @access public
      * @param array $paramsArr
      *
      * @return void
      */
-    public function assignJsonParams($paramsArr)
+    public function assignParams($paramsArr): void
     {
         if (!is_array($paramsArr)) {
             $paramsArr = [$paramsArr];
         }
         $this->params = array_merge($this->params, $paramsArr);
     }
+
 
     /**
      * set template
@@ -200,10 +186,10 @@ class NgsTemplater extends AbstractTemplater
             return;
         }
         $this->smarty = $this->getSmartyTemplater();
-        foreach ($this->smartyParams as $key => $value) {
+        foreach ($this->params as $key => $value) {
             $this->smarty->assign($key, $value);
         }
-        if ($this->getType() === 'json') {
+        if ($this->getType() === AbstractRequest::RESPONSE_TYPE_JSON) {
             $this->displayJson();
             return;
         }
@@ -220,7 +206,6 @@ class NgsTemplater extends AbstractTemplater
         if (NGS()->get('JS_FRAMEWORK_ENABLE') && $requestContext->isAjaxRequest()) {
             $params = [];
             $params['html'] = $this->smarty->fetch($this->getTemplate());
-            $params['nl'] = $loadMapper->getNestedLoads();
             $params['pl'] = $this->getPermalink();
             $params['params'] = $this->params;
             $this->displayJson($params);

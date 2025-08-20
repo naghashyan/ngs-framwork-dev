@@ -97,8 +97,8 @@ namespace {
               case 'TEMPLATE_ENGINE':
                 return new class {
                   public function setHttpStatusCode($c){}
-                  public function assignJson($k,$v){}
-                  public function assignJsonParams($p){}
+                  public function assign($k,$v){}
+                  public function assignParams($p){}
                   public function setType($t){}
                   public function setTemplate($t){}
                   public function setPermalink($p){}

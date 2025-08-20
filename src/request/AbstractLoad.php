@@ -25,6 +25,7 @@ namespace ngs\request;
 
 use ngs\exceptions\NoAccessException;
 use ngs\routes\NgsModuleResolver;
+use ngs\routes\NgsRoute;
 use ngs\util\NgsArgs;
 use ngs\util\RequestContext;
 
@@ -47,12 +48,13 @@ abstract class AbstractLoad extends AbstractRequest
      * this method use for initialize
      * load and AbstractRequest initialize function
      *
+     * @param NgsRoute $route
      * @abstract
      * @access public
      *
      * @return void;
      */
-    public function initialize(): void
+    public function initialize(NgsRoute $route): void
     {
     }
 
@@ -64,7 +66,7 @@ abstract class AbstractLoad extends AbstractRequest
      * @return void
      * @throws \ngs\exceptions\DebugException
      */
-    final public function service(): void
+    public function service(): void
     {
         $this->load();
         $this->loadClassName = get_class($this);
@@ -105,7 +107,7 @@ abstract class AbstractLoad extends AbstractRequest
     }
 
 
-    public function validate(): void
+    public function validate(): bool
     {
     }
 
@@ -118,7 +120,7 @@ abstract class AbstractLoad extends AbstractRequest
             NGS()->define('JS_FRAMEWORK_ENABLE', false);
             NGS()->getTemplateEngine()->assign('ns', $this->getParams());
         } elseif ($this->getNgsLoadType() === 'smarty') {
-            NGS()->getTemplateEngine()->assignJsonParams($this->getJsonParams());
+            NGS()->getTemplateEngine()->assignParams($this->getJsonParams());
             NGS()->getTemplateEngine()->assign('ns', $this->getParams());
         }
     }
@@ -335,6 +337,11 @@ abstract class AbstractLoad extends AbstractRequest
             $this->ngsLoadType = 'smarty';
         }
         return $this->ngsLoadType;
+    }
+
+    public function getResponseType(): string
+    {
+        return AbstractRequest::RESPONSE_TYPE_HTML;
     }
 
     /**

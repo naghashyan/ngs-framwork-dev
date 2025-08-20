@@ -24,27 +24,24 @@
 namespace ngs\request;
 
 use ngs\exceptions\NoAccessException;
+use ngs\routes\NgsRoute;
 
-abstract class AbstractJsonLoad extends AbstractLoad
+abstract class AbstractApiRequest extends AbstractRequest
 {
     protected array $params = [];
 
-    /**
-     * @param $namespace
-     * @param $fileNs
-     * @param $loadObj
-     * @return void
-     */
-    protected function setNestedLoadParams($namespace, $fileNs, $loadObj): void
+    public function initialize(NgsRoute $route): void
     {
-        $this->params["inc"][$namespace] = $loadObj->getParams();
+        //TODO: MJ: check with mj what is this?
+        $this->setAction($route->offsetGet('action_method'));
+        $this->setRequestValidators($route->offsetGet('request_params'));
+        $this->setResponseValidators($route->offsetGet('response_params'));
+
+        parent::initialize($route);
     }
 
-    /**
-     * @return string
-     */
-    public function getNgsLoadType(): string
+    public function getResponseType(): string
     {
-        return "json";
+        return self::RESPONSE_TYPE_JSON;
     }
 }

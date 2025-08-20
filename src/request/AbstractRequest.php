@@ -21,11 +21,15 @@
 namespace ngs\request;
 
 use ngs\exceptions\NoAccessException;
+use ngs\routes\NgsRoute;
 use ngs\util\NgsArgs;
 use ngs\util\Pusher;
 
 abstract class AbstractRequest
 {
+    public const RESPONSE_TYPE_JSON = 'json';
+    public const RESPONSE_TYPE_HTML = 'html';
+
     protected $requestGroup;
     protected array $params = [];
     protected int $ngsStatusCode = 200;
@@ -33,7 +37,15 @@ abstract class AbstractRequest
     private ?NgsArgs $ngsArgs = null;
     private ?string $ngsRequestUIID = null;
 
-    abstract public function initialize(): void;
+    abstract public function initialize(NgsRoute $route): void;
+
+    abstract public function getResponseType(): string;
+
+    abstract public function validate(): bool;
+
+    abstract public function service(): void;
+
+    abstract public function getTemplate(): ?string;
 
     /**
      * default http status code

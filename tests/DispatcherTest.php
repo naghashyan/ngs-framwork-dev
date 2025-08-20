@@ -47,8 +47,8 @@ namespace ngs {
                                     public function setPermalink($permalink): void { $this->log[] = [__FUNCTION__, $permalink]; }
                                     public function display($json = false): void { $this->log[] = [__FUNCTION__, $json]; }
                                     public function setHttpStatusCode($code): void { $this->httpCode = (int)$code; $this->log[] = [__FUNCTION__, $code]; }
-                                    public function assignJson($key, $value): void { $this->json[$key] = $value; $this->log[] = [__FUNCTION__, $key, $value]; }
-                                    public function assignJsonParams($params): void { $this->json['params'] = $params; $this->log[] = [__FUNCTION__, $params]; }
+                                    public function assign($key, $value): void { $this->json[$key] = $value; $this->log[] = [__FUNCTION__, $key, $value]; }
+                                    public function assignParams($params): void { $this->json['params'] = $params; $this->log[] = [__FUNCTION__, $params]; }
                                 };
                             case 'LOAD_MAPPER':
                                 return new class {

@@ -14,6 +14,8 @@ namespace ngs\routes;
  */
 class NgsFileRoute extends NgsRoute
 {
+    public const TYPE = 'file';
+
     /**
      * @var string|null File type/extension, for static file routes
      */
@@ -31,7 +33,7 @@ class NgsFileRoute extends NgsRoute
     {
         parent::__construct();
         // Set type to 'file' by default for file routes
-        $this->setType('file');
+        $this->setType(self::TYPE);
     }
 
     /**

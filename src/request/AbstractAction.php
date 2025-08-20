@@ -31,6 +31,11 @@ abstract class AbstractAction extends \ngs\request\AbstractRequest
     {
     }
 
+    public function getResponseType(): string
+    {
+        return AbstractRequest::RESPONSE_TYPE_JSON;
+    }
+
     public function afterRequest(): void
     {
         $this->afterAction();

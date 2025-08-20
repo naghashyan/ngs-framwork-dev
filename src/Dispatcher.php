@@ -33,6 +33,7 @@ use ngs\routes\NgsModuleResolver;
 use ngs\routes\NgsRoute;
 use ngs\routes\NgsRoutesResolver;
 use ngs\routes\NgsFileRoute;
+use ngs\session\AbstractSessionManager;
 use ngs\templater\NgsTemplater;
 use ngs\util\AbstractBuilder;
 use ngs\util\FileUtils;
@@ -131,32 +132,17 @@ class Dispatcher
                 NgsArgs::getInstance()->setArgs($route->getArgs());
             }
 
-            switch ($route->getType()) {
-                case 'load':
-                    if (isset($_GET['ngsValidate']) && $_GET['ngsValidate'] === 'true') {
-                        $this->validate($route->getRequest());
-                    } elseif (isset(NGS()->args()->args()['ngsValidate']) && NGS()->args()->args()['ngsValidate']) {
-                        $this->validate($route->getRequest());
-                    } else {
-                        $this->loadPage($route->getRequest());
-                    }
-                    break;
+            if($route->getType() === NgsFileRoute::TYPE){
+                $this->streamStaticFile($route);
+            }
+            else{
+                $validateOnly = false;
 
-                case 'api_load':
-                    $this->loadApiPage($route);
-                    // no break intentional - fall through to action case
+                if (isset(NGS()->args()->args()['ngsValidate']) && NGS()->args()->args()['ngsValidate']) {
+                    $validateOnly = true;
+                }
 
-                case 'action':
-                    $this->doAction($route->getRequest());
-                    break;
-
-                case 'api_action':
-                    $this->doApiAction($route);
-                    exit;
-
-                case 'file':
-                    $this->streamStaticFile($route);
-                    break;
+                $this->handleRequest($route, $validateOnly);
             }
         } catch (DebugException $ex) {
             $environmentContext = NgsEnvironmentContext::getInstance();
@@ -184,9 +170,9 @@ class Dispatcher
             }
         } catch (NgsErrorException $ex) {
             $this->templateEngine->setHttpStatusCode($ex->getHttpCode());
-            $this->templateEngine->assignJson('code', $ex->getCode());
-            $this->templateEngine->assignJson('msg', $ex->getMessage());
-            $this->templateEngine->assignJson('params', $ex->getParams());
+            $this->templateEngine->assign('code', $ex->getCode());
+            $this->templateEngine->assign('msg', $ex->getMessage());
+            $this->templateEngine->assign('params', $ex->getParams());
             $this->templateEngine->display(true);
         } catch (InvalidUserException $ex) {
             $this->handleInvalidUserAndNoAccessException($ex);
@@ -216,218 +202,52 @@ class Dispatcher
      * @throws DebugException When the load class is not found
      * @throws NoAccessException When access is denied
      */
-    public function loadPage(string $action): void
+    private function handleRequest(NgsRoute $route, bool $validateOnly): void
     {
         try {
-            $loadObj = $this->instantiateRequestObject($action);
-            $loadObj->initialize();
+            $requestName = $route->getRequest();
+            $request = $this->instantiateRequestObject($requestName);
+            $request->initialize($route);
 
-            if (!$this->validateRequest($loadObj)) {
-                $loadObj->onNoAccess();
+            if (!$this->validateAccessPermissions($request)) {
+                $request->onNoAccess();
             }
 
-            //TODO:ZN: refactor this part, what is content load?
-            //$contentLoad = $this->routesEngine->getContentLoad();
-            //$loadObj->setLoadName($contentLoad);
-            $loadObj->service();
+            $request->validate();
 
-            $this->templateEngine->setType($loadObj->getNgsLoadType());
-            $this->templateEngine->setTemplate($loadObj->getTemplate());
+            if($validateOnly) {
+                $this->templateEngine->setType(AbstractRequest::RESPONSE_TYPE_JSON);
+                $this->templateEngine->assignParams($request->getParams());
+            }
+            else{
+                $request->service();
 
-            $loadMapper = NGS()->createDefinedInstance('LOAD_MAPPER', \ngs\routes\NgsLoadMapper::class);
-            $this->templateEngine->setPermalink($loadMapper->getNgsPermalink());
+                $this->templateEngine->setType($request->getResponseType());
+
+                if($request->getTemplate() !== null) {
+                    $this->templateEngine->setTemplate($request->getTemplate());
+                }
+            }
+
 
             // Dispatch before result display event
+            //TODO: ZN: revise event management
             $this->eventManager->dispatch(new BeforeResultDisplayEventStructure([]));
 
             $this->displayResult();
-
             $this->finishRequest();
-            $loadObj->afterRequest();
+
+            if(!$validateOnly) {
+                $request->afterRequest();
+            }
         } catch (NoAccessException $ex) {
-            $this->onNoAccess($loadObj);
+            $this->onNoAccess($request);
             throw $ex;
         } catch (InvalidUserException $ex) {
             $this->handleInvalidUserAndNoAccessException($ex);
         }
     }
 
-    /**
-     * Handles API load requests
-     *
-     * @param NgsRoute $route The routes object containing action and parameters
-     * 
-     * @return void
-     * @throws DebugException When the load class is not found
-     * @throws InvalidUserException When user is invalid
-     * @throws NoAccessException When access is denied
-     */
-    public function loadApiPage(NgsRoute $route): void
-    {
-        try {
-            /** @var NgsApiAction $loadObj */
-            $loadObj = $this->instantiateRequestObject($route->getAction());
-            $loadObj->setAction($route->offsetGet('action_method'));
-            $loadObj->setRequestValidators($route->offsetGet('request_params'));
-            $loadObj->setResponseValidators($route->offsetGet('response_params'));
-            $loadObj->initialize();
-
-            if (!$this->validateRequest($loadObj)) {
-                $loadObj->onNoAccess();
-            }
-
-            $loadObj->service();
-
-            if (method_exists($loadObj, 'getNgsLoadType')) {
-                $this->templateEngine->setType($loadObj->getNgsLoadType());
-            }
-
-            if (method_exists($loadObj, 'getTemplate')) {
-                $this->templateEngine->setTemplate($loadObj->getTemplate());
-            }
-
-            $loadMapper = NGS()->createDefinedInstance('LOAD_MAPPER', \ngs\routes\NgsLoadMapper::class);
-            $this->templateEngine->setPermalink($loadMapper->getNgsPermalink());
-
-            // Dispatch before result display event
-            $this->eventManager->dispatch(new BeforeResultDisplayEventStructure([]));
-
-            $this->displayResult();
-            $this->finishRequest();
-
-            if (is_object($loadObj)) {
-                $loadObj->afterRequest();
-            }
-        } catch (NoAccessException $ex) {
-            $this->onNoAccess($loadObj);
-            throw $ex;
-        } catch (InvalidUserException $ex) {
-            $this->onNoAccess($loadObj);
-            throw $ex;
-        }
-    }
-
-    /**
-     * Validates a load action
-     *
-     * @param string $action The action to validate
-     * 
-     * @return void
-     * @throws DebugException When the load class is not found
-     * @throws NoAccessException When access is denied
-     * @throws InvalidUserException When user is invalid
-     */
-    public function validate(string $action): void
-    {
-        try {
-            $loadObj = $this->instantiateRequestObject($action);
-            $loadObj->initialize();
-
-            if (!$this->validateRequest($loadObj)) {
-                $loadObj->onNoAccess();
-            }
-
-            //TODO: ZN: this logic should be refactored, what is the contentLoad?
-//            $contentLoad = $this->routesEngine->getContentLoad();
-//            $loadObj->setLoadName($contentLoad);
-            $loadObj->validate();
-
-            // Passing arguments
-            $this->templateEngine->setType('json');
-            $this->templateEngine->assignJsonParams($loadObj->getParams());
-
-            $this->displayResult();
-            $this->finishRequest();
-
-            $loadObj->afterRequest();
-        } catch (NoAccessException $ex) {
-            $this->onNoAccess($loadObj);
-            throw $ex;
-        } catch (InvalidUserException $ex) {
-            $this->onNoAccess($loadObj);
-            throw $ex;
-        }
-    }
-
-    /**
-     * Manages NGS actions by initializing action objects, verifying access,
-     * and displaying action output
-     *
-     * @param string $action The action to execute
-     *
-     * @return void
-     * @throws DebugException When the action class is not found
-     * @throws NoAccessException When access is denied
-     */
-    private function doAction(string $action): void
-    {
-        try {
-            $actionObj = $this->instantiateRequestObject($action);
-            $actionObj->initialize();
-
-            if (!$this->validateRequest($actionObj)) {
-                $actionObj->onNoAccess();
-            }
-
-            $actionObj->service();
-
-            // Passing arguments
-            $this->templateEngine->setType('json');
-            $this->templateEngine->assignJsonParams($actionObj->getParams());
-
-            $this->displayResult();
-            $this->finishRequest();
-
-            $actionObj->afterRequest();
-        } catch (NoAccessException $ex) {
-            $this->onNoAccess($actionObj);
-            throw $ex;
-        } catch (InvalidUserException $ex) {
-            $this->handleInvalidUserAndNoAccessException($ex);
-        }
-    }
-
-    /**
-     * Handles API action requests
-     *
-     * @param NgsRoute $route The routes object containing action and parameters
-     * 
-     * @return void
-     * @throws DebugException When the action class is not found
-     * @throws InvalidUserException When user is invalid
-     * @throws NoAccessException When access is denied
-     */
-    private function doApiAction(NgsRoute $route): void
-    {
-        try {
-            $actionObj = $this->instantiateRequestObject($route->getAction());
-            $actionObj->setAction($route->offsetGet('action_method'));
-            $actionObj->setRequestValidators($route->offsetGet('request_params'));
-            $actionObj->setResponseValidators($route->offsetGet('response_params'));
-            $actionObj->initialize();
-
-            if (!$this->validateRequest($actionObj)) {
-                $actionObj->onNoAccess();
-            }
-
-            $actionObj->service();
-
-            // Passing arguments
-            $this->templateEngine->setType('json');
-            $this->templateEngine->assignJsonParams($actionObj->getParams());
-
-            $this->displayResult();
-            $this->finishRequest();
-
-            $actionObj->afterRequest();
-        } catch (NoAccessException $ex) {
-            $this->onNoAccess($actionObj);
-            throw $ex;
-        } catch (InvalidUserException $ex) {
-            $this->onNoAccess($actionObj);
-            throw $ex;
-        }
-    }
 
     /**
      * Streams a static file to the client
@@ -479,15 +299,15 @@ class Dispatcher
 
         // For AJAX requests, return JSON response
         $this->templateEngine->setHttpStatusCode($ex->getHttpCode());
-        $this->templateEngine->assignJson('code', $ex->getCode());
-        $this->templateEngine->assignJson('msg', $ex->getMessage());
+        $this->templateEngine->assign('code', $ex->getCode());
+        $this->templateEngine->assign('msg', $ex->getMessage());
 
         if ($ex->getRedirectTo() !== '') {
-            $this->templateEngine->assignJson('redirect_to', $ex->getRedirectTo());
+            $this->templateEngine->assign('redirect_to', $ex->getRedirectTo());
         }
 
         if ($ex->getRedirectToLoad() !== '') {
-            $this->templateEngine->assignJson('redirect_to_load', $ex->getRedirectToLoad());
+            $this->templateEngine->assign('redirect_to_load', $ex->getRedirectToLoad());
         }
 
         $this->templateEngine->display(true);
@@ -500,9 +320,9 @@ class Dispatcher
      *
      * @return bool True if the request is valid, false otherwise
      */
-    private function validateRequest(AbstractRequest $request): bool
+    private function validateAccessPermissions(AbstractRequest $request): bool
     {
-        $sessionManager = NGS()->createDefinedInstance('SESSION_MANAGER', \ngs\session\AbstractSessionManager::class);
+        $sessionManager = NGS()->createDefinedInstance('SESSION_MANAGER', AbstractSessionManager::class);
         return $sessionManager->validateRequest($request);
     }
 
@@ -512,7 +332,7 @@ class Dispatcher
      *
      * @return array Array of visible events
      */
-    public function getVisibleEvents(): array
+    private function getVisibleEvents(): array
     {
         return $this->eventManager->getVisibleEvents();
     }
@@ -540,7 +360,7 @@ class Dispatcher
     private function redirectToNotFound(): void
     {
         // Use existing module resolver property
-        $module = $this->moduleResolver->resolveModule($requestContext->getRequestUri());
+        $module = $this->moduleResolver->resolveModule($this->requestContext->getRequestUri());
 
         $route = $this->routesEngine->getNotFoundLoad($module);
         if ($route === null || $this->isRedirect === true) {
