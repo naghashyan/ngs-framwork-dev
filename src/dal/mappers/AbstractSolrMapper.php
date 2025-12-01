@@ -4,11 +4,11 @@
  * AbstractSolrMapper class is a base class for all mapper lasses.
  * It contains the basic functionality and also DBMS pointer.
  *
- * @author Levon Naghashyan <levon@naghashyan.com>
- * @site https://naghashyan.com
- * @package framework.dal.mappers
- * @version 4.0.0
- * @year 2014-2020
+     * @author Naghashyan Solutions <info@naghashyan.com>
+     * @site https://naghashyan.com
+     * @package ngs.framework
+     * @version 5.0.0
+     * @year 2007-2026
  * @copyright Naghashyan Solutions LLC
  */
 

@@ -6,12 +6,12 @@
  * using Solarium
  *
  *
- * @author Levon Naghashyan <levon@naghashyan.com>
- * @site http://naghashyan.com
+     * @author Naghashyan Solutions <info@naghashyan.com>
+     * @site https://naghashyan.com
  * @mail levon@naghashyan.com
- * @package framework.dal.connectors
- * @version 3.1.0
- * @year 2016
+     * @package ngs.framework
+     * @version 5.0.0
+     * @year 2007-2026
  * @copyright Naghashyan Solutions LLC
  */
 

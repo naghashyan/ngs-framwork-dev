@@ -5,11 +5,11 @@
  * for static function that will
  * vissible from any classes
  *
- * @author Levon Naghashyan <levon@naghashyan.com>
- * @site https://naghashyan.com
- * @year 2015-2019
- * @package ngs.framework.system
- * @version 4.0.0
+     * @author Naghashyan Solutions <info@naghashyan.com>
+     * @site https://naghashyan.com
+     * @year 2007-2026
+     * @package ngs.framework
+     * @version 5.0.0
  *
  * This file is part of the NGS package.
  *

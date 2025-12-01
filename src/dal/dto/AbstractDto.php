@@ -5,11 +5,11 @@
  * AbstractDto parent class for all
  * ngs dtos
  *
- * @author Levon Naghashyan <levon@naghashyan.com>
- * @site https://naghashyan.com
- * @year 2009-2020
- * @package ngs.framework.dal.dto
- * @version 4.0.0
+     * @author Naghashyan Solutions <info@naghashyan.com>
+     * @site https://naghashyan.com
+     * @year 2007-2026
+     * @package ngs.framework
+     * @version 5.0.0
  *
  * This file is part of the NGS package.
  *

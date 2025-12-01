@@ -7,12 +7,12 @@
  * 2. read local file dirs
  * 3. upload files
  *
- * @author Levon Naghashyan
+     * @author Naghashyan Solutions <info@naghashyan.com>
  * <levon@naghashyan.com>
- * @site https://naghashyan.com
- * @year 2014-2023
- * @package ngs.framework.util
- * @version 4.5.0
+     * @site https://naghashyan.com
+     * @year 2007-2026
+     * @package ngs.framework
+     * @version 5.0.0
  *
  * This file is part of the NGS package.
  *

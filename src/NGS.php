@@ -18,11 +18,10 @@ namespace ngs {
      * This class provides core functionality for the NGS framework including
      * configuration management, module handling, and instance creation.
      *
-     * @author Levon Naghashyan <levon@naghashyan.com>
-     * @author Zaven Naghashyan <zaven@naghashyan.com>
+     * @author Naghashyan Solutions <info@naghashyan.com>
      * @link https://naghashyan.com
      * @package ngs.framework
-     * @version 4.5.0
+     * @version 5.0.0
      * @since 2014
      *
      * This file is part of the NGS package.

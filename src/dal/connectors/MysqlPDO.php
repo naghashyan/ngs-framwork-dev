@@ -3,12 +3,12 @@
 /**
  * MysqlPDO class uses MySQL PHP PDO Extension to access DB.
  *
- * @author Levon Naghashyan <levon@naghashyan.com>
- * @site https://naghashyan.com
+     * @author Naghashyan Solutions <info@naghashyan.com>
+     * @site https://naghashyan.com
  * @mail levon@naghashyan.com
- * @package ngs.framework.dal.connectors
- * @version 4.2.1
- * @year 2009-2022
+     * @package ngs.framework
+     * @version 5.0.0
+     * @year 2007-2026
  *
  * This file is part of the NGS package.
  *

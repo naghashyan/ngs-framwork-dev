@@ -5,11 +5,11 @@ declare(strict_types=1);
 /**
  * parent class for all ngs requests (loads/action)
  *
- * @author Zaven Naghashyan <zaven@naghashyan.com>, Levon Naghashyan <levon@naghashyan.com>
- * @site https://naghashyan.com
- * @year 2009-2022
- * @version 4.2.0
- * @package ngs.framework
+     * @author Naghashyan Solutions <info@naghashyan.com>
+     * @site https://naghashyan.com
+     * @year 2007-2026
+     * @version 5.0.0
+     * @package ngs.framework
  *
  * This file is part of the NGS package.
  *

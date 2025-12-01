@@ -4,11 +4,11 @@
  * EventSubscriptionManager class
  * Handles event subscription management
  *
- * @author Levon Naghashyan <levon@naghashyan.com>
- * @site https://naghashyan.com
- * @year 2023
- * @package ngs.event
- * @version 1.0
+     * @author Naghashyan Solutions <info@naghashyan.com>
+     * @site https://naghashyan.com
+     * @year 2007-2026
+     * @package ngs.framework
+     * @version 5.0.0
  *
  * This file is part of the NGS package.
  *
@@ -33,7 +33,7 @@ use Exception;
  * 
  * Manages event subscriptions and subscribers
  * 
- * @package ngs\event
+     * @package ngs.framework
  */
 class EventSubscriptionManager
 {

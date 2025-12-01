@@ -3,12 +3,12 @@
 /**
  * EventDispatchedStructure class, can call when event dispatched
  *
- * @author Mikael Mkrtchyan
- * @site https://naghashyan.com
+     * @author Naghashyan Solutions <info@naghashyan.com>
+     * @site https://naghashyan.com
  * @mail miakel.mkrtchyan@naghashyan.com
- * @year 2022
- * @package ngs.event.structure
- * @version 2.0.0
+     * @year 2007-2026
+     * @package ngs.framework
+     * @version 5.0.0
  *
  */
 

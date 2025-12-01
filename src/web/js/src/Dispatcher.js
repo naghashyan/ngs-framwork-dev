@@ -1,9 +1,9 @@
 /**
- * @author Levon Naghashyan
- * @site http://naghashyan.com
+     * @author Naghashyan Solutions <info@naghashyan.com>
+     * @site https://naghashyan.com
  * @mail levon@naghashyan.com
- * @year 2013-2019
- * @version 4.0.0
+     * @year 2007-2026
+     * @version 5.0.0
  */
 import './NGS.js';
 import AjaxLoader from './AjaxLoader.js';

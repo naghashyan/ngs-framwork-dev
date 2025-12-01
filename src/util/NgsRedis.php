@@ -3,12 +3,12 @@
 /**
  * Redis client util helper class
  *
- * @author Levon Naghashyan
- * @site https://naghashyan.com
+     * @author Naghashyan Solutions <info@naghashyan.com>
+     * @site https://naghashyan.com
  * @mail levon@naghashyan.com
- * @package IM.util
- * @version 1.0.0
- * @year 2020
+     * @package ngs.framework
+     * @version 5.0.0
+     * @year 2007-2026
  */
 
 namespace ngs\util;

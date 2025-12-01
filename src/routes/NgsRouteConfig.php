@@ -8,7 +8,7 @@ namespace ngs\routes;
  * Data Transfer Object (DTO) for single route configuration.
  * Represents the structure of route configurations found in routes.json and main.json files.
  *
- * @package ngs\routes
+     * @package ngs.framework
  */
 class NgsRouteConfig
 {

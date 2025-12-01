@@ -7,11 +7,11 @@ namespace ngs;
  * for static function that will
  * visible from any classes
  *
- * @author Levon Naghashyan <levon@naghashyan.com>
- * @site https://naghashyan.com
- * @year 2014-2022
- * @package ngs.framework
- * @version 4.2.0
+     * @author Naghashyan Solutions <info@naghashyan.com>
+     * @site https://naghashyan.com
+     * @year 2007-2026
+     * @package ngs.framework
+     * @version 5.0.0
  *
  *
  * This file is part of the NGS package.
