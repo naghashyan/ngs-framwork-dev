@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /**
  * parent class of all ngs actions
  *
@@ -27,8 +29,11 @@ abstract class AbstractAction extends \ngs\request\AbstractRequest
     /**
      * @return void
      */
-    public function initialize(): void
+    public function initialize(?\ngs\routes\NgsRoute $route = null): void
     {
+        // Actions currently do not need additional initialization data from the route.
+        // If future route metadata is required, it should be hydrated here.
+        $this->addParams($route?->getArgs() ?? []);
     }
 
     public function getResponseType(): string
@@ -44,8 +49,6 @@ abstract class AbstractAction extends \ngs\request\AbstractRequest
     /**
      * this function invoked when user hasn't permission
      *
-     * @abstract
-     * @access
      * @return void
      */
     public function onNoAccess(): void
