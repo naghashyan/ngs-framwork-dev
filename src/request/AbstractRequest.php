@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /**
  * parent class for all ngs requests (loads/action)
  *
@@ -30,14 +32,34 @@ abstract class AbstractRequest
     public const RESPONSE_TYPE_JSON = 'json';
     public const RESPONSE_TYPE_HTML = 'html';
 
-    protected $requestGroup;
-    protected array $params = [];
-    protected int $ngsStatusCode = 200;
-    private array $ngsPushParams = ['link' => [], 'script' => [], 'img' => []];
-    private ?NgsArgs $ngsArgs = null;
-    private ?string $ngsRequestUIID = null;
+    /**
+     * Logical grouping identifier for the current request (e.g. for route groups).
+     *
+     * @var string|null
+     */
+    protected ?string $requestGroup = null;
 
-    abstract public function initialize(NgsRoute $route): void;
+    /**
+     * Key-value payload that will be passed to template engines or API responses.
+     */
+    protected array $params = [];
+
+    /**
+     * HTTP status code that should be used for the request response.
+     */
+    protected int $ngsStatusCode = 200;
+
+    /**
+     * Resource hints to be sent via HTTP/2 push (grouped by resource type).
+     */
+    private array $ngsPushParams = ['link' => [], 'script' => [], 'img' => []];
+
+    /**
+     * Unique identifier for the request used when storing per-request arguments.
+     */
+    private ?string $ngsRequestUuid = null;
+
+    abstract public function initialize(?NgsRoute $route = null): void;
 
     abstract public function getResponseType(): string;
 
@@ -83,13 +105,12 @@ abstract class AbstractRequest
         return 403;
     }
 
-    public function setRequestGroup($requestGroup)
+    public function setRequestGroup(?string $requestGroup): void
     {
         $this->requestGroup = $requestGroup;
     }
 
-
-    public function getRequestGroup()
+    public function getRequestGroup(): ?string
     {
         return $this->requestGroup;
     }
@@ -107,19 +128,14 @@ abstract class AbstractRequest
     }
 
     /**
-     * add multiple parameters
+     * Add multiple parameters to the request payload.
      *
-     * @access public
-     * @param array $paramsArr
-     *
-     * @return void
+     * @param array|string $paramsArr
      */
-    final public function addParams($paramsArr)
+    final public function addParams(array|string $paramsArr): void
     {
-        if (!is_array($paramsArr)) {
-            $paramsArr = [$paramsArr];
-        }
-        $this->params = array_merge($this->params, $paramsArr);
+        $params = is_array($paramsArr) ? $paramsArr : [$paramsArr];
+        $this->params = array_merge($this->params, $params);
     }
 
     /**
@@ -132,7 +148,7 @@ abstract class AbstractRequest
      *
      * @return void
      */
-    final protected function addParam(string $name, mixed $value)
+    final protected function addParam(string $name, mixed $value): void
     {
         $this->params[$name] = $value;
     }
@@ -198,11 +214,13 @@ abstract class AbstractRequest
      */
     protected function setHttpPushParam(string $type, string $value): bool
     {
-        if (isset($this->ngsPushParams[$type])) {
-            $this->ngsPushParams[$type] = $value;
-            return true;
+        if (!array_key_exists($type, $this->ngsPushParams)) {
+            return false;
         }
-        return false;
+
+        $this->ngsPushParams[$type][] = $value;
+
+        return true;
     }
 
     /**
@@ -227,10 +245,10 @@ abstract class AbstractRequest
 
     protected function getNgsRequestUUID(): string
     {
-        if (!$this->ngsRequestUIID) {
-            $this->ngsRequestUIID = uniqid('ngs_', true);
+        if (!$this->ngsRequestUuid) {
+            $this->ngsRequestUuid = uniqid('ngs_', true);
         }
-        return $this->ngsRequestUIID;
+        return $this->ngsRequestUuid;
     }
 
     final public function args(): NgsArgs

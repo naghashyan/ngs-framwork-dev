@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /**
  * NGS abstract load all loads should extends from this class
  * this class extends from AbstractRequest class
@@ -34,43 +36,70 @@ abstract class AbstractLoad extends AbstractRequest
     public const REQUEST_TYPE = "load";
 
     protected array $parentParams = [];
+    /**
+     * Data that should be available for JSON responses when using a template engine.
+     */
     private array $jsonParam = [];
+
+    /**
+     * Fully-qualified request name (e.g. loads.main.home) used by the mapper.
+     */
     private string $loadName = '';
-    private string $parentLoadName = '';
+
+    /**
+     * Name of the parent load when this load is nested inside another.
+     */
+    private ?string $parentLoadName = null;
+
+    /**
+     * Flag indicating that the current load is executed as a nested load.
+     */
     private bool $isNestedLoad = false;
-    private $ngsWrappingLoad = null;
-    private $ngsLoadType = null;
+
+    /**
+     * Wrapper load instance when this load is nested inside another load.
+     */
+    private ?AbstractLoad $ngsWrappingLoad = null;
+
+    /**
+     * Rendering strategy for the load (e.g. 'smarty' or 'json').
+     */
+    private ?string $ngsLoadType = null;
+
+    /**
+     * Raw request parameters passed into the current load (used mainly for nested loads).
+     */
     private array $ngsRequestParams = [];
+
+    /**
+     * Fully qualified class name of the load for mapper bookkeeping.
+     */
     private string $loadClassName = '';
+
+    /**
+     * Query-string key/value pairs that were resolved during routing.
+     */
     private array $ngsQueryParams = [];
 
     /**
-     * this method use for initialize
-     * load and AbstractRequest initialize function
-     *
-     * @param NgsRoute $route
-     * @abstract
-     * @access public
-     *
-     * @return void;
+     * Hook for populating load state from the resolved route.
+     * Extend this method in child classes to move route arguments into params or custom properties.
      */
-    public function initialize(NgsRoute $route): void
+    public function initialize(?NgsRoute $route = null): void
     {
+        // Template method: concrete loads should populate data using $route arguments.
+        // NOTE: No default behavior is defined because load initialization varies per module.
     }
 
     /**
-     * run load object
+     * Execute the load, hydrate template metadata, and register nested loads.
      *
-     * @abstract
-     * @access
-     * @return void
      * @throws \ngs\exceptions\DebugException
      */
     public function service(): void
     {
         $this->load();
         $this->loadClassName = get_class($this);
-        $ns = $this->loadClassName;
         //initialize template engine pass load params to templater
         NGS()->getTemplateEngine()->setType($this->getNgsLoadType());
         if (!$this->isNestedLoad() && $this->getLoadName()) {
@@ -109,6 +138,8 @@ abstract class AbstractLoad extends AbstractRequest
 
     public function validate(): bool
     {
+        // Override this in child classes when request-level validation is required.
+        return true;
     }
 
     /**
@@ -129,7 +160,6 @@ abstract class AbstractLoad extends AbstractRequest
      * in this method implemented
      * nested load functional
      *
-     * @abstract
      * @access public
      * @param String $namespace
      * @param array $loadArr
@@ -145,7 +175,7 @@ abstract class AbstractLoad extends AbstractRequest
         $loadObj = new $actionArr['action']();
         //set that this load is nested
         $loadObj->setIsNestedLoad(true);
-        $loadObj->setNgsParenLoadName($this->loadClassName);
+        $loadObj->setNgsParentLoadName($this->loadClassName);
         $loadObj->setNgsWrappingLoad($this);
         if (isset($loadArr['args'])) {
             NgsArgs::getInstance($loadObj->getNgsRequestUUID(), $loadArr['args']);
@@ -184,12 +214,12 @@ abstract class AbstractLoad extends AbstractRequest
         $this->params['inc'][$namespace]['permalink'] = $loadObj->getPermalink();
     }
 
-    private function setNgsParenLoadName(string $load): void
+    private function setNgsParentLoadName(string $load): void
     {
         $this->parentLoadName = $load;
     }
 
-    public function getNgsParentLoadName(): string
+    public function getNgsParentLoadName(): ?string
     {
         return $this->parentLoadName;
     }
@@ -197,14 +227,13 @@ abstract class AbstractLoad extends AbstractRequest
     /**
      * this method add template varialble
      *
-     * @abstract
      * @access public
      * @param String $name
      * @param mixed $value
      *
      * @return void
      */
-    final protected function addParentParam(string $name, $value): void
+    final protected function addParentParam(string $name, mixed $value): void
     {
         $this->parentParams[$name] = $value;
     }
@@ -212,25 +241,20 @@ abstract class AbstractLoad extends AbstractRequest
     /**
      * this method add json varialble
      *
-     * @abstract
      * @access public
      * @param String $name
      * @param mixed $value
      *
      * @return void
      */
-    public function addJsonParam(string $name, $value): void
+    public function addJsonParam(string $name, mixed $value): void
     {
         $this->jsonParam[$name] = $value;
     }
 
 
     /**
-     * Return params array
-     * @abstract
-     * @access public
-     *
-     * @return array
+     * Return parameters collected from parent loads.
      */
     protected function getParentParams(): array
     {
@@ -239,10 +263,6 @@ abstract class AbstractLoad extends AbstractRequest
 
     /**
      * Return json params array
-     * @abstract
-     * @access public
-     *
-     * @return array
      */
     public function getJsonParams(): array
     {
@@ -252,8 +272,6 @@ abstract class AbstractLoad extends AbstractRequest
     /**
      * this abstract method should be replaced in childs load
      * for add nest laod
-     * @abstract
-     * @access public
      *
      * @return array
      */
@@ -265,8 +283,6 @@ abstract class AbstractLoad extends AbstractRequest
     /**
      * this abstract method should be replaced in childs load
      * for set load template
-     * @abstract
-     * @access public
      *
      * @return string
      */
@@ -277,14 +293,12 @@ abstract class AbstractLoad extends AbstractRequest
 
     /**
      * check if load can be nested
-     * @abstract
-     * @access
      * @param string $namespace
      * @param AbstractLoad $load
      *
      * @return bool
      */
-    public function isNestable($namespace, $load)
+    public function isNestable(string $namespace, AbstractLoad $load): bool
     {
         return true;
     }
@@ -296,7 +310,7 @@ abstract class AbstractLoad extends AbstractRequest
      *
      * @return void
      */
-    final public function setIsNestedLoad($isNestedLoad)
+    final public function setIsNestedLoad(bool $isNestedLoad): void
     {
         $this->isNestedLoad = $isNestedLoad;
     }
@@ -311,7 +325,7 @@ abstract class AbstractLoad extends AbstractRequest
         return $this->isNestedLoad;
     }
 
-    protected function setNgsLoadType($ngsLoadType)
+    protected function setNgsLoadType(?string $ngsLoadType): void
     {
         $this->ngsLoadType = $ngsLoadType;
     }
@@ -329,8 +343,9 @@ abstract class AbstractLoad extends AbstractRequest
         }
         //todo add additional header ngs framework checker
         if (
-            (isset($_SERVER['HTTP_ACCEPT']) && $_SERVER['HTTP_ACCEPT'] === 'application/json') || $this->getTemplate() === null
-            || strpos($this->getTemplate(), '.json')
+            (isset($_SERVER['HTTP_ACCEPT']) && $_SERVER['HTTP_ACCEPT'] === 'application/json')
+            || $this->getTemplate() === null
+            || (is_string($this->getTemplate()) && str_contains($this->getTemplate(), '.json'))
         ) {
             $this->ngsLoadType = 'json';
         } else {
@@ -429,7 +444,6 @@ abstract class AbstractLoad extends AbstractRequest
     /**
      * this function invoked when user hasn't permistion
      *
-     * @abstract
      * @access
      * @return void
      */
