@@ -3,12 +3,12 @@
  * Default NGS modules routing class
  * This class is used by the dispatcher for matching URLs with module routes
  *
- * @author Levon Naghashyan <levon@naghashyan.com>
- * @author Zaven Naghashyan <zaven@naghashyan.com>
- * @site https://naghashyan.com
- * @year 2015-2023
- * @package ngs.framework.routes
- * @version 5.0.0
+     * @author Naghashyan Solutions <info@naghashyan.com>
+     * @author Naghashyan Solutions <info@naghashyan.com>
+     * @site https://naghashyan.com
+     * @year 2007-2026
+     * @package ngs.framework
+     * @version 5.0.0
  *
  * This file is part of the NGS package.
  *
@@ -26,7 +26,7 @@ use ngs\NgsModule;
 /**
  * Class NgsModuleResolver - Handles module routing in the NGS framework
  *
- * @package ngs\routes
+     * @package ngs.framework
  */
 class NgsModuleResolver
 {

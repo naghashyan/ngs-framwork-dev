@@ -3,12 +3,12 @@
 /**
  * FormValidator class contains utility functions for working with html form value validation.
  *
- * @author Levon Naghashyan
+     * @author Naghashyan Solutions <info@naghashyan.com>
  * <levon@naghashyan.com>
- * @site https://naghashyan.com
- * @year 2013-2023
- * @package ngs.framework.util
- * @version 4.5.0
+     * @site https://naghashyan.com
+     * @year 2007-2026
+     * @package ngs.framework
+     * @version 5.0.0
  *
  * This file is part of the NGS package.
  *

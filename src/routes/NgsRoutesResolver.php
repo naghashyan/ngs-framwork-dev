@@ -23,7 +23,7 @@ use ngs\request\AbstractLoad;
  * Resolves URLs to route data and provides per-group 404 info.
  * Always constructs NgsRoute via setters, never with arrays.
  *
- * @package ngs\routes
+     * @package ngs.framework
  */
 class NgsRoutesResolver
 {

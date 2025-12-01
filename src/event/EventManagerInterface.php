@@ -4,11 +4,11 @@
  * EventManagerInterface
  * Interface for event management functionality
  *
- * @author AI Assistant
- * @site https://naghashyan.com
- * @year 2023
- * @package ngs.event
- * @version 1.0.0
+     * @author Naghashyan Solutions <info@naghashyan.com>
+     * @site https://naghashyan.com
+     * @year 2007-2026
+     * @package ngs.framework
+     * @version 5.0.0
  *
  */
 
@@ -21,7 +21,7 @@ use ngs\event\subscriber\AbstractEventSubscriber;
  * Interface EventManagerInterface
  * Defines the contract for event managers
  * 
- * @package ngs\event
+     * @package ngs.framework
  */
 interface EventManagerInterface
 {

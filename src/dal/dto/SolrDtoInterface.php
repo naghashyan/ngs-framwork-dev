@@ -4,11 +4,11 @@
  *
  * SolrDto parent Interface for all solr dtos
  *
- * @author Levon Naghashyan <levon@naghashyan.com>
- * @site http://naghashyan.com
- * @year 2018
- * @package ngs.framework.dal.dto
- * @version 3.5.0
+     * @author Naghashyan Solutions <info@naghashyan.com>
+     * @site https://naghashyan.com
+     * @year 2007-2026
+     * @package ngs.framework
+     * @version 5.0.0
  *
  * This file is part of the NGS package.
  *

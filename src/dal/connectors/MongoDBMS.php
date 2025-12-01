@@ -4,11 +4,11 @@
  * ImprovedDBMS class uses MySQL Improved Extension to access DB.
  * This class provides full transaction support instead of DBMS class.
  *
- * @author Levon Naghashyan <levon@naghashyan.com>
- * @site http://naghashyan.com
- * @package framework.dal.connectors
- * @version 3.1.0
- * @year 2014-2016
+     * @author Naghashyan Solutions <info@naghashyan.com>
+     * @site https://naghashyan.com
+     * @package ngs.framework
+     * @version 5.0.0
+     * @year 2007-2026
  * @copyright Naghashyan Solutions LLC
  */
 

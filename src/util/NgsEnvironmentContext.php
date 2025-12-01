@@ -8,9 +8,9 @@ namespace ngs\util;
  * This class centralizes all environment-related operations that were previously
  * scattered across different classes in the framework.
  *
- * @author AI Assistant
- * @package ngs.framework.util
- * @version 1.0.0
+     * @author Naghashyan Solutions <info@naghashyan.com>
+     * @package ngs.framework
+     * @version 5.0.0
  *
  * This file is part of the NGS package.
  *

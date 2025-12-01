@@ -5,9 +5,9 @@
  *
  * This file demonstrates the rich information that can be included in
  * in-code documentation through DocBlocks and tags.
- * @author Levon Naghashyan <levon@naghashyan.com>
- * @version 3.1.0
- * @package ngs.framework
+     * @author Naghashyan Solutions <info@naghashyan.com>
+     * @version 5.0.0
+     * @package ngs.framework
  *
  * This file is part of the NGS package.
  *

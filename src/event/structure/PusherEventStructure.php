@@ -4,11 +4,11 @@
  * PusherEventStructure class
  * Event structure for pusher events
  *
- * @author AI Assistant
- * @site https://naghashyan.com
- * @year 2023
- * @package ngs.event.structure
- * @version 1.0.0
+     * @author Naghashyan Solutions <info@naghashyan.com>
+     * @site https://naghashyan.com
+     * @year 2007-2026
+     * @package ngs.framework
+     * @version 5.0.0
  *
  */
 

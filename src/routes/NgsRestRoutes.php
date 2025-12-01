@@ -5,11 +5,11 @@
  * this class by default used from dispacher
  * for matching url with routes
  *
- * @author Levon Naghashyan <levon@naghashyan.com>
- * @site http://naghashyan.com
- * @year 2014-2016
- * @package ngs.framework.routes
- * @version 3.1.0
+     * @author Naghashyan Solutions <info@naghashyan.com>
+     * @site https://naghashyan.com
+     * @year 2007-2026
+     * @package ngs.framework
+     * @version 5.0.0
  *
  * This file is part of the NGS package.
  *

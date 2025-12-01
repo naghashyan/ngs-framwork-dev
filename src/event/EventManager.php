@@ -4,12 +4,12 @@
  * EventManager manager class
  * used to handle events
  *
- * @author Mikael Mkrtchyan
- * @site http://naghashyan.com
+     * @author Naghashyan Solutions <info@naghashyan.com>
+     * @site https://naghashyan.com
  * @mail mikael.mkrtchyan@naghashyan.com
- * @year 2022
- * @package ngs.event
- * @version 1.0
+     * @year 2007-2026
+     * @package ngs.framework
+     * @version 5.0.0
  *
  */
 

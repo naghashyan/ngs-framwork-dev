@@ -4,11 +4,11 @@
  * NGS predefined templater class
  * handle smarty and json responses
  *
- * @author Levon Naghashyan <levon@naghashyan.com>
- * @site https://naghashyan.com
- * @package ngs.framework.templater
- * @version 4.0.0
- * @year 2010-2020
+     * @author Naghashyan Solutions <info@naghashyan.com>
+     * @site https://naghashyan.com
+     * @package ngs.framework
+     * @version 5.0.0
+     * @year 2007-2026
  *
  * This file is part of the NGS package.
  *

@@ -4,11 +4,11 @@
  * AbstractMapper class is a base class for all mapper lasses.
  * It contains the basic functionality and also DBMS pointer.
  *
- * @author Levon Naghashyan <levon@naghashyan.com>
- * @site http://naghashyan.com
- * @package framework.dal.mappers
- * @version 3.1.0
- * @year 2009-2014
+     * @author Naghashyan Solutions <info@naghashyan.com>
+     * @site https://naghashyan.com
+     * @package ngs.framework
+     * @version 5.0.0
+     * @year 2007-2026
  * @copyright Naghashyan Solutions LLC
  */
 

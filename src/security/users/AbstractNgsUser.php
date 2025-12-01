@@ -4,12 +4,12 @@
  *
  * This class is a template for all authorized user classes.
  *
- * @author Levon Naghashyan <levon@naghashyan.com>
- * @site https://naghashyan.com
+     * @author Naghashyan Solutions <info@naghashyan.com>
+     * @site https://naghashyan.com
  * @mail levon@naghashyan.com
- * @year 2015-2019
- * @package ngs.framework.security.users
- * @version 3.8.0
+     * @year 2007-2026
+     * @package ngs.framework
+     * @version 5.0.0
  *
  * This file is part of the NGS package.
  *

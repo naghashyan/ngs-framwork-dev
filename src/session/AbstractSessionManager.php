@@ -5,12 +5,12 @@
  * this class provide abstract function
  * for users manipulates
  *
- * @author Levon Naghashyan <levon@naghashyan.com>
- * @site http://naghashyan.com
+     * @author Naghashyan Solutions <info@naghashyan.com>
+     * @site https://naghashyan.com
  * @mail levon@naghashyan.com
- * @year 2009-2016
- * @package ngs.framework
- * @version 3.1.0
+     * @year 2007-2026
+     * @package ngs.framework
+     * @version 5.0.0
  *
  * This file is part of the NGS package.
  *
