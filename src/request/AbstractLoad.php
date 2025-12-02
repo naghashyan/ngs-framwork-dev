@@ -189,7 +189,8 @@ abstract class AbstractLoad extends AbstractRequest
 
         $loadObj->service();
 
-        if (NGS()->isJsFrameworkEnable() && NGS()->getHttpUtils()->isAjaxRequest()) {
+        $requestContext = NGS()->createDefinedInstance('REQUEST_CONTEXT', RequestContext::class);
+        if (NGS()->get('JS_FRAMEWORK_ENABLE') && $requestContext->isAjaxRequest()) {
             NGS()->getLoadMapper()->setNestedLoads($this->getLoadName(), $loadArr['action'], $loadObj->getJsonParams());
         }
         if (!isset($this->params['inc'])) {

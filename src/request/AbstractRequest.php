@@ -25,6 +25,7 @@ namespace ngs\request;
 use ngs\exceptions\NoAccessException;
 use ngs\routes\NgsRoute;
 use ngs\util\NgsArgs;
+use ngs\util\RequestContext;
 use ngs\util\Pusher;
 
 abstract class AbstractRequest
@@ -200,7 +201,8 @@ abstract class AbstractRequest
      */
     protected function redirect(string $url): void
     {
-        NGS()->getHttpUtils()->redirect($url);
+        $requestContext = NGS()->createDefinedInstance('REQUEST_CONTEXT', RequestContext::class);
+        $requestContext->redirect($url);
     }
 
     /**

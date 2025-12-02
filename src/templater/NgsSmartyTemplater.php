@@ -361,8 +361,9 @@ class NgsSmartyTemplater extends Smarty
      */
     public function addScripts($tpl_output, $template)
     {
-        $jsString = '<meta name="generator" content="Naghashyan Framework ' . NGS()->getNGSVersion() . '" />';
-        if (NGS()->isJsFrameworkEnable() == false) {
+        // Use non-deprecated accessors for defined values
+        $jsString = '<meta name="generator" content="Naghashyan Framework ' . NGS()->getDefinedValue('NGSVERSION') . '" />';
+        if (NGS()->getDefinedValue('JS_FRAMEWORK_ENABLE') == false) {
             $jsString .= '</head>';
             $tpl_output = str_replace('</head>', $jsString, $tpl_output) . "\n";
             return $tpl_output;
@@ -386,15 +387,16 @@ class NgsSmartyTemplater extends Smarty
         $jsString .= 'NGS.setJsPublicDir("' . $jsModule . NGS()->getPublicJsOutputDir() . '");';
         $jsString .= 'NGS.setModule("' . $currentModuleName . '");';
         $jsString .= 'NGS.setTmst("' . time() . '");';
-        $jsString .= 'NGS.setHttpHost("' . NGS()->getHttpUtils()->getHttpHostByNs("", true) . '");';
+        // Replace deprecated HttpUtils calls with RequestContext
+        $jsString .= 'NGS.setHttpHost("' . $requestContext->getHttpHostByNs("", true) . '");';
         if ($currentModuleName !== NGS()->getName()) {
-            $jsString .= 'NGS.setModuleHttpHost("' . NGS()->getHttpUtils()->getHttpHostByNs($currentModuleName, true) . '");';
+            $jsString .= 'NGS.setModuleHttpHost("' . $requestContext->getHttpHostByNs($currentModuleName, true) . '");';
         }
-        $staticPath = NGS()->getHttpUtils()->getHttpHost(true);
+        $staticPath = $requestContext->getHttpHost(true);
         if (isset(NGS()->getConfig()->static_path)) {
-            $staticPath = NGS()->getHttpUtils()->getHttpHostByNs("", true);
+            $staticPath = $requestContext->getHttpHostByNs("", true);
         }
-        $jsString .= 'NGS.setStaticPath("' . NGS()->getHttpUtils()->getHttpHostByNs("", true) . '");';
+        $jsString .= 'NGS.setStaticPath("' . $requestContext->getHttpHostByNs("", true) . '");';
         foreach ($this->getCustomJsParams() as $key => $value) {
             $jsString .= $key . " = '" . $value . "';";
         }
